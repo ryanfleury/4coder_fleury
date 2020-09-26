@@ -1183,19 +1183,21 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
                 }
             }
             
-            int data_count = 0;
-            float *data = push_array_zero(arena, float, total_value_count);
-            for(DataChunk *chunk = first_data_chunk; chunk; chunk = chunk->next)
             {
-                for(int i = 0; i < ArrayCount(chunk->values); i += 1)
+                int data_count = 0;
+                float *data = push_array_zero(arena, float, total_value_count);
+                for(DataChunk *chunk = first_data_chunk; chunk; chunk = chunk->next)
                 {
-                    data[data_count] = chunk->values[i];
-                    data_count += 1;
+                    for(int i = 0; i < ArrayCount(chunk->values); i += 1)
+                    {
+                        data[data_count] = chunk->values[i];
+                        data_count += 1;
+                    }
                 }
+
+                *data_ptr = data;
+                *data_count_ptr = data_count;
             }
-            
-            *data_ptr = data;
-            *data_count_ptr = data_count;
             
             end_read_data:;
         }
