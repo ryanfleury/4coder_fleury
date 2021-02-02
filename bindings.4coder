@@ -2,67 +2,82 @@
 keys_global =
 {
     // NOTE(rjf): Meta
-    { "exit_4coder" ,                             "F4",      "Alt"                     },
-    { "keyboard_macro_start_recording" ,          "U",      "Control"                  },
-    { "keyboard_macro_finish_recording",          "U",      "Control", "Shift"         },
-    { "keyboard_macro_replay",                    "U",      "Alt"                      },
-    { "change_active_panel",                      "Comma",  "Control"                  },
-    { "change_active_panel_backwards",            "Comma",  "Control", "Shift"         },
-    { "project_go_to_root_directory",             "H",      "Control"                  },
-    { "f4_toggle_compilation_expand",         "Insert"                             },
-    { "change_to_build_panel",                    "Period", "Alt"                      },
-    { "close_build_panel",                        "Comma",  "Alt"                      },
-    { "f4_switch_syntax_option",                  "Tick",   "Control"                  },
+    { "exit_4coder",                     "F4",     "Alt"              },
+    // NOTE(jack): for some reason on my keyboard quote (') is Tick
+    //             and the Tick (`) is actually Ex1
+    { "keyboard_macro_replay",           "Tick",   "Control"          },
+    { "keyboard_macro_start_recording" , "U",      "Control"          },
+    { "keyboard_macro_finish_recording", "U",      "Control", "Shift" },
+    { "change_active_panel",             "Comma",  "Control"          },
+    { "change_active_panel_backwards",   "Comma",  "Control", "Shift" },
+    { "project_go_to_root_directory",    "H",      "Control"          },
+    { "f4_toggle_compilation_expand",    "Insert"                     },
+    { "change_to_build_panel",           "Period", "Alt"              },
+    { "close_build_panel",               "Comma",  "Alt"              },
+    { "f4_switch_syntax_option",         "Ex1",   "Control"          },
+
+    // TODO(jack): implement
+    { "jp_macro_toggle_recording",                  "U",             "Control" },
+
+    // NOTE(jack): Ryan has these unbound
+    //{ "open_in_other",                            "O",             "Alt" },
+    //{ "quick_swap_buffer",                        "BackwardSlash", "Alt" },
+    //{ "toggle_filebar",                           "B",             "Alt" },
+    //{ "list_all_functions_current_buffer_lister", "I",             "Alt" },
+    //{ "list_all_functions_all_buffers_lister",    "I",             "Alt", "Shift" },
     
     // NOTE(rjf): Files
-    { "interactive_new",                          "N",      "Control"                  },
-    { "f4_setup_new_project",                     "N",      "Control", "Shift"         },
-    { "interactive_open_or_new",                  "O",      "Control"                  },
-    { "f4_interactive_open_or_new_in_project",    "O",      "Alt"                      },
-    { "f4_open_project",                          "O",      "Control", "Shift"         },
-    { "interactive_kill_buffer",                  "K",      "Control"                  },
-    { "interactive_switch_buffer",                "I",      "Control"                  },
-    { "save_all_dirty_buffers",                   "S",      "Control", "Shift"         },
-    { "f4_recent_files_menu",                     "V",      "Alt"                      },
-    
+    { "interactive_new",                       "N", "Control"          },
+    { "f4_setup_new_project",                  "N", "Control", "Shift" },
+    { "interactive_open_or_new",               "O", "Control"          },
+    { "f4_interactive_open_or_new_in_project", "O", "Alt"              },
+    { "f4_open_project",                       "O", "Control", "Shift" },
+    { "interactive_kill_buffer",               "K", "Control"          },
+    { "interactive_switch_buffer",             "I", "Control"          },
+    { "save_all_dirty_buffers",                "S", "Control", "Shift" },
+    { "f4_recent_files_menu",                  "V", "Alt"              },
+    // TODO(jack): implement
+    { "jp_switch_buffer_other",                "I", "Control", "Shift" },
+
+
+
     // NOTE(rjf): Jump Lists
-    { "goto_next_jump",                           "N",      "Alt"                      },
-    { "goto_prev_jump",                           "N",      "Alt",     "Shift"         },
-    { "goto_first_jump",                          "M",      "Alt",     "Shift"         },
+    { "goto_next_jump",                             "N",             "Alt"  },
+    { "goto_prev_jump",                             "N",             "Alt", "Shift" },
+    { "goto_first_jump",                            "M",             "Alt", "Shift" },
     
     // NOTE(rjf): Commands
     { "execute_any_cli",                          "Z",      "Alt"                      },
     { "execute_previous_cli",                     "Z",      "Alt",     "Shift"         },
-    { "command_lister",                           "X",      "Alt"                      },
-    
+    { "command_lister",                             "P",             "Shift", "Control" },
+
     // NOTE(rjf): Project
-    { "build_in_build_panel",                     "M",      "Alt"                      },
-    { "project_command_lister",                   "X",      "Alt",     "Shift"         },
-    { "project_fkey_command",                     "F1"                                 },
-    { "project_fkey_command",                     "F2"                                 },
-    { "project_fkey_command",                     "F3"                                 },
-    { "project_fkey_command",                     "F4"                                 },
-    { "project_fkey_command",                     "F5"                                 },
-    { "project_fkey_command",                     "F6"                                 },
-    { "project_fkey_command",                     "F7"                                 },
-    { "project_fkey_command",                     "F8"                                 },
-    { "project_fkey_command",                     "F9"                                 },
-    { "project_fkey_command",                     "F10"                                },
-    { "project_fkey_command",                     "F11"                                },
-    { "project_fkey_command",                     "F12"                                },
-    { "project_fkey_command",                     "F13"                                },
-    { "project_fkey_command",                     "F14"                                },
-    { "project_fkey_command",                     "F15"                                },
-    { "project_fkey_command",                     "F16"                                },
-    
+    { "build_in_build_panel",                       "M",             "Alt"  },
+    { "project_command_lister",                     "X",             "Alt", "Shift" },
+    { "project_fkey_command",                       "F1" },
+    { "project_fkey_command",                       "F2" },
+    { "project_fkey_command",                       "F3" },
+    { "project_fkey_command",                       "F4" },
+    { "project_fkey_command",                       "F5" },
+    { "project_fkey_command",                       "F6" },
+    { "project_fkey_command",                       "F7" },
+    { "project_fkey_command",                       "F8" },
+    { "project_fkey_command",                       "F9" },
+    { "project_fkey_command",                       "F10" },
+    { "project_fkey_command",                       "F11" },
+    { "project_fkey_command",                       "F12" },
+    { "project_fkey_command",                       "F13" },
+    { "project_fkey_command",                       "F14" },
+    { "project_fkey_command",                       "F15" },
+    { "project_fkey_command",                       "F16" },
+
     // NOTE(rjf): Panels
-    { "open_panel_vsplit", "P", "Control" },
-    { "open_panel_hsplit", "Minus", "Control" },
-    { "close_panel", "P", "Control", "Shift" },
+    //{ "open_panel_vsplit", "P", "Control" },
+    //{ "open_panel_hsplit", "Minus", "Control" },
+    //{ "close_panel", "P", "Control", "Shift" },
     { "f4_search_for_definition__project_wide", "J", "Control" },
     { "f4_search_for_definition__current_file", "J", "Control", "Shift" },
     { "jump_to_last_point", "J", "Alt" },
-    
 };
 
 keys_file =
@@ -94,7 +109,7 @@ keys_file =
     { "move_down_to_blank_line_end",      "Down", "Control" },
     { "move_line_up",                     "Up", "Alt" },
     { "move_line_down",                   "Down", "Alt" },
-    
+
     // NOTE(rjf): Alternative Movement Keys
     { "seek_end_of_line",             "End" },
     { "f4_home_first_non_whitespace", "Home" },
@@ -102,11 +117,11 @@ keys_file =
     { "page_down",              "PageDown" },
     { "goto_beginning_of_file", "PageUp", "Control" },
     { "goto_end_of_file",       "PageDown", "Control" },
-    
+
     // NOTE(rjf): Mark
     { "set_mark",                    "Space", "Control" },
     { "cursor_mark_swap",            "M", "Control" },
-    
+
     // NOTE(rjf): Search
     { "f4_search",                   "F", "Control" },
     { "f4_reverse_search",           "R", "Control" },
@@ -116,45 +131,48 @@ keys_file =
     { "list_all_locations_of_selection",  "G", "Control", "Shift" },
     { "search_identifier",           "T", "Control" },
     { "list_all_locations_of_identifier", "T", "Control", "Shift" },
-    
+
     // NOTE(rjf): Replace
-    { "replace_in_range",            "A", "Control" },
-    { "query_replace",               "Q", "Control" },
-    { "query_replace_identifier",    "Q", "Control", "Shift" },
-    { "query_replace_selection",     "Q", "Alt" },
+    { "replace_in_range",                              "A", "Control" },
+    { "query_replace",                                 "Q", "Control" },
+    { "query_replace_identifier",                      "Q", "Control", "Shift" },
+    { "query_replace_selection",                       "Q", "Alt" },
     
     // NOTE(rjf): Clipboard
-    { "copy",                        "C", "Control" },
-    { "paste_and_indent",            "V", "Control" },
-    { "paste_next_and_indent",       "V", "Control", "Shift" },
-    { "cut",                         "X", "Control" },
+    { "copy",                                          "C", "Control" },
+    { "paste_and_indent",                              "V", "Control" },
+    { "paste_next_and_indent",                         "V", "Control", "Shift" },
+    { "cut",                                           "X", "Control" },
+    // TODO(jack): implement
+    { "jp_copy_line",                                  "C", "Control", "Shift" },
+    { "jp_cut_line",                                   "X", "Control", "Shift" },
     
     // NOTE(rjf): Deletion
-    { "delete_range",                "D", "Control" },
-    { "delete_line",                 "D", "Control", "Shift" },
-    
+    { "delete_range",                                  "D", "Control" },
+    { "delete_line",                                   "D", "Control", "Shift" },
+
     // NOTE(rjf): Insertion
     { "duplicate_line",              "L", "Control" },
-    
+
     // NOTE(rjf): View
-    { "center_view",                 "E", "Control" },
-    { "left_adjust_view",            "E", "Control", "Shift" },
+    { "center_view",                                   "E", "Control" },
+    { "left_adjust_view",                              "E", "Control", "Shift" },
     
     // NOTE(rjf): File
-    { "kill_buffer",                 "K", "Control", "Shift" },
-    { "reopen",                      "O", "Alt", "Shift" },
-    { "save",                        "S", "Control" },
-    { "save_all_dirty_buffers",      "S", "Control", "Shift" },
-    { "redo",                        "Y", "Control" },
-    { "undo",                        "Z", "Control" },
-    { "view_buffer_other_panel",     "1", "Control" },
+    { "kill_buffer",                                   "K", "Control", "Shift" },
+    { "reopen",                                        "O", "Control", "Shift" },
+    { "save",                                          "S", "Control" },
+    { "save_all_dirty_buffers",                        "S", "Control", "Shift" },
+    { "redo",                                          "Y", "Control" },
+    { "undo",                                          "Z", "Control" },
+    { "view_buffer_other_panel",                       "1", "Control" },
     
     // NOTE(rjf): Meta
-    { "swap_panels",                 "2", "Control" },
-    { "if_read_only_goto_position",  "Return" },
-    { "if_read_only_goto_position_same_panel", "Return", "Shift" },
-    { "view_jump_list_with_lister",  "Period", "Control", "Shift" },
-    
+    { "swap_panels",                                   "2", "Control" },
+    { "if_read_only_goto_position",                    "Return" },
+    { "if_read_only_goto_position_same_panel",         "Return", "Shift" },
+    { "view_jump_list_with_lister",                    "Period", "Control", "Shift" },
+
     // NOTE(rjf): Code Peek
     { "f4_code_peek",          "Alt", "Control" },
     { "f4_code_peek_yank",     "Tab", "Control" },
@@ -167,32 +185,43 @@ keys_file =
     // NOTE(rjf): Helpers
     { "f4_write_zero_struct",  "0", "Control" },
     { "f4_toggle_enclosure_side",  "Semicolon", "Alt" },
+
+    // TODO(jack): implement
+    //{ "jp_kill_rect",                                  "D", "Control", "Alt" },
+    //{ "jp_replace_rect",                               "Q", "Control", "Alt" },
 };
 
 keys_code =
 {
-    { "f4_comment_selection",       "Semicolon", "Control" },
-    { "f4_uncomment_selection",     "Semicolon", "Control", "Shift", },
-    { "f4_autocomplete_or_indent",  "Tab" },
-    { "f4_unindent",                "Tab", "Shift" },
-    { "word_complete_drop_down",    "Tab", "Shift", "Control" },
-    { "write_block",                "R", "Alt" },
-    { "write_todo",                 "T", "Alt" },
-    { "write_note",                 "Y", "Alt" },
-    { "list_all_locations_of_type_definition",               "D", "Alt" },
-    { "list_all_locations_of_type_definition_of_identifier", "T", "Alt", "Shift" },
-    { "open_long_braces",           "LeftBracket", "Control" },
-    { "open_long_braces_semicolon", "LeftBracket", "Control", "Shift" },
-    { "open_long_braces_break",     "RightBracket", "Control", "Shift" },
-    { "select_surrounding_scope",   "LeftBracket", "Alt" },
-    { "select_surrounding_scope_maximal", "LeftBracket", "Alt", "Shift" },
-    { "select_prev_scope_absolute", "RightBracket", "Alt" },
-    { "select_prev_top_most_scope", "RightBracket", "Alt", "Shift" },
-    { "select_next_scope_absolute", "Quote", "Alt" },
-    { "select_next_scope_after_current", "Quote", "Alt", "Shift" },
-    { "place_in_scope",             "ForwardSlash", "Alt" },
-    { "delete_current_scope",       "Minus", "Alt" },
-    { "if0_off",                    "I", "Alt" },
-    { "open_file_in_quotes",        "1", "Alt" },
-    { "open_matching_file_cpp",     "2", "Alt" },
+    { "f4_comment_selection",                                "Semicolon",    "Control" },
+    { "f4_uncomment_selection",                              "Semicolon",    "Control", "Shift" },
+    { "f4_autocomplete_or_indent",                           "Tab" },   
+    { "f4_unindent",                                         "Tab",          "Shift" },
+    { "auto_indent_range",                                   "Tab",          "Control" },
+
+    { "word_complete_drop_down",                             "Tab",          "Shift", "Control" },
+    { "write_block",                                         "R",            "Alt" },
+    { "write_todo",                                          "T",            "Alt" },
+    { "write_note",                                          "Y",            "Alt" },
+    
+    { "list_all_locations_of_type_definition",               "D",            "Alt" },
+    { "list_all_locations_of_type_definition_of_identifier", "T",            "Alt", "Shift" },
+    
+    { "open_long_braces",                                    "LeftBracket",  "Alt" },
+    { "open_long_braces_semicolon",                          "LeftBracket",  "Alt", "Shift" },
+    { "open_long_braces_break",                              "RightBracket", "Alt", "Shift" },
+    
+    { "select_prev_scope_absolute",                          "LeftBracket",  "Control" },
+    { "select_prev_top_most_scope",                          "LeftBracket",  "Control", "Shift" },
+    { "select_next_scope_absolute",                          "RightBracket", "Control" },
+    { "select_next_scope_after_current",                     "RightBracket", "Control", "Shift" },
+    
+    { "place_in_scope",                                      "ForwardSlash", "Alt" },
+    { "delete_current_scope",                                "Minus",        "Alt" },
+    { "open_file_in_quotes",                                 "1",            "Alt" },
+    { "open_matching_file_cpp",                              "2",            "Alt" },
+    { "write_zero_struct",                                   "0",            "Control" },
+    
+    // TODO(jack): implement
+    { "jp_insert_deref_access",                              "Period",       "Control" },
 };
