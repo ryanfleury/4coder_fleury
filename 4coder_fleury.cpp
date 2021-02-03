@@ -141,6 +141,9 @@
 //
 // - fleury_color_comment_user_name: The color used to highlight the
 //   username in comments.
+//
+// - fleury_color_border: The color used to highlight the
+//   border around the active panel.
 
 
 //~ @f4_render_intro Rendering Features
