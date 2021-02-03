@@ -340,6 +340,17 @@ F4_DrawFileBar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_I
     }
 }
 
+// NOTE(Jai): To include custom border colours
+function ARGB_Color
+jai_getBorderColour(Application_Links* app) {
+    
+    ARGB_Color result = {0};
+    if (power_mode.enabled) { result = F4_GetColor(app, ColorCtx_Cursor(ColorFlag_PowerMode, GlobalKeybindingMode)); } 
+    else { result = F4_ARGBFromID(active_color_table, fleury_color_border); } 
+    
+    return result;
+}
+
 function void
 F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
 {
@@ -382,9 +393,14 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     // NOTE(rjf): Draw mode color border.
     if(is_active_view)
     {
+        // NOTE(Jai): To include custom border colours
+#if 0
         ARGB_Color color = F4_GetColor(app, ColorCtx_Cursor(power_mode.enabled ? ColorFlag_PowerMode : 0,
                                                             GlobalKeybindingMode));
         color = argb_color_blend(color, 0.7f, 0, 0.3f);
+#else
+        ARGB_Color color = jai_getBorderColour(app);
+#endif
         draw_margin(app, view_rect, region, color);
     }
     else
