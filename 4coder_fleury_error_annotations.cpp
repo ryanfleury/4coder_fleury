@@ -15,16 +15,16 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
     Heap *heap = &global_heap;
     Scratch_Block scratch(app);
     
-    Locked_Jump_State jump_state = {};
+    Marker_List *jump_list = nullptr;
     {
         ProfileScope(app, "[Fleury] Error Annotations (Get Locked Jump State)");
-        jump_state = get_locked_jump_state(app, heap);
+        jump_list = get_or_make_list_for_buffer(app, heap, jump_buffer);
     }
     
     Face_ID face = global_small_code_face;
     Face_Metrics metrics = get_face_metrics(app, face);
     
-    if(jump_buffer != 0 && jump_state.view != 0)
+    if(jump_buffer != 0)
     {
         Managed_Scope buffer_scopes[2];
         {
@@ -61,7 +61,7 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
         {
             ProfileScope(app, "[Fleury] Error Annotations (Buffer Loop)");
             
-            i64 jump_line_number = get_line_from_list(app, jump_state.list, i);
+            i64 jump_line_number = get_line_from_list(app, jump_list, i);
             i64 code_line_number = get_line_number_from_pos(app, buffer, buffer_markers[i].pos);
             
             if(code_line_number != last_line)
