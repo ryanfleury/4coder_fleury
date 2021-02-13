@@ -425,6 +425,32 @@ F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **
 }
 
 internal b32
+F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out, F4_Index_TokenSkipFlags flags)
+{
+    b32 result = 0;
+    Token *token = token_it_read(&ctx->it);
+    if(token)
+    {
+        if(token->sub_kind == sub_kind)
+        {
+            result = 1;
+            if(token_out)
+            {
+                *token_out = token;
+            }
+        }
+    }
+    else
+    {
+        ctx->done = 1;
+    }if(result)
+    {
+        F4_Index_ParseCtx_Inc(ctx, flags);
+    }
+    return result;
+}
+
+internal b32
 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string)
 {
     b32 result = 0;

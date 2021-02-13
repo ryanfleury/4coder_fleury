@@ -105,6 +105,7 @@ internal b32 F4_Index_ParseCtx_Inc(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFla
 #define F4_Index_ParseCtx_IncWs(ctx) F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace)
 internal b32 F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String_Const_u8 string, F4_Index_TokenSkipFlags flags);
 internal b32 F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out, F4_Index_TokenSkipFlags flags);
+internal b32 F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out, F4_Index_TokenSkipFlags flags);
 internal b32 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
 internal b32 F4_Index_PeekTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out);
 internal b32 F4_Index_PeekTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out);

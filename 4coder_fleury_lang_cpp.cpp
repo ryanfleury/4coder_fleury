@@ -3,18 +3,16 @@ internal void
 F4_CPP_ParseMacroDefinition(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags)
 {
     Token *name = 0;
-    F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
     if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
     {
         F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
-                            F4_Index_NoteKind_Macro, 0, Ii64(name));
+                          F4_Index_NoteKind_Macro, 0, Ii64(name));
     }
-
     for(;!ctx->done;)
     {
         Token *token = token_it_read(&ctx->it);
         if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
-            token->kind == TokenBaseKind_Preprocessor)
+           token->kind == TokenBaseKind_Preprocessor)
         {
             break;
         }
@@ -42,7 +40,7 @@ F4_CPP_SkipParseBody(F4_Index_ParseCtx *ctx)
             F4_Index_ParseComment(ctx, name);
         }
         // NOTE(jack): Macros
-        else if(F4_Index_PeekTokenSubKind(ctx, TokenCppKind_PPDefine, 0))
+        else if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, F4_Index_TokenSkipFlag_SkipWhitespace))
         {
             F4_CPP_ParseMacroDefinition(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
         }
@@ -106,8 +104,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                (F4_Index_PeekToken(ctx, S8Lit("enum")))))
         {
             //~ NOTE(rjf): Structs
-            if(scope_nest == 0 &&
-               F4_Index_RequireToken(ctx, S8Lit("struct"), flags) &&
+            if(F4_Index_RequireToken(ctx, S8Lit("struct"), flags) &&
                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
             {
                 handled = 1;
@@ -131,12 +128,10 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                       F4_Index_NoteKind_Type,
                                       note_flags, Ii64(name));
                 }
-
             }
             
             //~ NOTE(rjf): Unions
-            else if(scope_nest == 0 &&
-                    F4_Index_RequireToken(ctx, S8Lit("union"), flags) &&
+            else if(F4_Index_RequireToken(ctx, S8Lit("union"), flags) &&
                     F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
             {
                 handled = 1;
@@ -163,8 +158,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
             }
             
             //~ NOTE(rjf): Enums
-            else if(scope_nest == 0 &&
-                    F4_Index_RequireToken(ctx, string_u8_litexpr("enum"), flags))
+            else if(F4_Index_RequireToken(ctx, string_u8_litexpr("enum"), flags))
             {
                 handled = 1;
                 F4_Index_NoteFlags note_flags = 0;
@@ -176,6 +170,48 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                     
                     for(;!ctx->done;)
                     {
+                        if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &constant, flags))
+                        {
+                            F4_Index_ParseComment(ctx, constant);
+                        }
+                        // NOTE(jack): Macros
+                        if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, flags))
+                        {
+                            // NOTE(jack): If the defined token is the enum type name, 
+                            // don't note it as an macro
+                            // typedef enum Key 
+                            // {
+                            // #define Key(name, str) Key_##name,
+                            // #include "os_key_list.inc"
+                            // #undef Key
+                            //    Key_Max
+                            //  } Key;
+                            
+                            if(!F4_Index_PeekToken(ctx, F4_Index_StringFromToken(ctx, name)))
+                            {
+                                F4_CPP_ParseMacroDefinition(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+                            }
+                            else 
+                            {
+                                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, 0, flags);
+                                for(;!ctx->done;)
+                                {
+                                    Token *token = token_it_read(&ctx->it);
+                                    if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
+                                       token->kind == TokenBaseKind_Preprocessor)
+                                    {
+                                        break;
+                                    }
+                                    F4_Index_ParseCtx_IncWs(ctx);
+                                }
+                            }
+                        }
+                        
+                        // NOTE(jack): On #undef skip past the identifier so that it isn't noted as a constant
+                        if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPUndef, 0, flags))
+                        {
+                            F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, 0, flags);
+                        }
                         if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &constant, flags))
                         {
                             F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
@@ -185,6 +221,10 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                             {
                                 for(;!ctx->done;)
                                 {
+                                    if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &constant, flags))
+                                    {
+                                        F4_Index_ParseComment(ctx, constant);
+                                    }
                                     if(F4_Index_PeekToken(ctx, S8Lit("}")) ||
                                        F4_Index_PeekToken(ctx, S8Lit(",")))
                                     {
@@ -237,7 +277,6 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
             else
             {
                 Token *aliased_type_token = token_it_read(&ctx->it);
-
                 for(;token_it_inc_all(&ctx->it);)
                 {
                     Token *token = token_it_read(&ctx->it);
@@ -263,18 +302,15 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                     if (aliased_type_index_note) {
                         note_flags = aliased_type_index_note->flags;
                     }
-
                     F4_Index_MakeNote(ctx->app, ctx->file, 0,
                                       F4_Index_StringFromToken(ctx, name),
                                       F4_Index_NoteKind_Type,
                                       note_flags, Ii64(name));
                 }
             }
-            
         }
-        
         //~ NOTE(rjf): Macros
-        else if(F4_Index_PeekTokenSubKind(ctx, TokenCppKind_PPDefine, 0))
+        else if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, flags))
         {
             handled = 1;
             F4_CPP_ParseMacroDefinition(ctx, flags);
