@@ -54,6 +54,7 @@ F4_CPP_SkipParseBody(F4_Index_ParseCtx *ctx)
             nest -= 1;
             if(nest == 0)
             {
+                F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
                 break;
             }
         }
@@ -103,48 +104,25 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                (F4_Index_PeekToken(ctx, S8Lit("union"))) ||
                                (F4_Index_PeekToken(ctx, S8Lit("enum")))))
         {
-            //~ NOTE(rjf): Structs
-            if(F4_Index_RequireToken(ctx, S8Lit("struct"), flags) &&
-               F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
+            //~ NOTE(rjf): Structs and Unions (nested declarations not parsed)
+            if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_Struct, &name, flags) ||
+               F4_Index_RequireTokenSubKind(ctx, TokenCppKind_Union, &name, flags))
             {
                 handled = 1;
-                F4_Index_NoteFlags note_flags = F4_Index_NoteFlag_ProductType;
+                F4_Index_NoteFlags note_flags = ((name->sub_kind == TokenCppKind_Struct) ?
+                                                 F4_Index_NoteFlag_ProductType : F4_Index_NoteFlag_SumType);
+
+                b32 name_found = F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags);
                 if(!F4_CPP_SkipParseBody(ctx))
                 {
                     note_flags |= F4_Index_NoteFlag_Prototype;
                 }
-                F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                  F4_Index_StringFromToken(ctx, name),
-                                  F4_Index_NoteKind_Type,
-                                  note_flags, Ii64(name));
-                
-                // NOTE(jack): clear the prototype flag so that the typedef'd name
-                // is not flagged as a prototype
-                note_flags &= ~F4_Index_NoteFlag_Prototype;
-                if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
-                {
+                if (name_found) {
                     F4_Index_MakeNote(ctx->app, ctx->file, 0,
                                       F4_Index_StringFromToken(ctx, name),
                                       F4_Index_NoteKind_Type,
                                       note_flags, Ii64(name));
                 }
-            }
-            
-            //~ NOTE(rjf): Unions
-            else if(F4_Index_RequireToken(ctx, S8Lit("union"), flags) &&
-                    F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
-            {
-                handled = 1;
-                F4_Index_NoteFlags note_flags = F4_Index_NoteFlag_SumType;
-                if(!F4_CPP_SkipParseBody(ctx))
-                {
-                    note_flags |= F4_Index_NoteFlag_Prototype;
-                }
-                F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                  F4_Index_StringFromToken(ctx, name),
-                                  F4_Index_NoteKind_Type,
-                                  note_flags, Ii64(name));
-                
                 // NOTE(jack): clear the prototype flag so that the typedef'd name
                 // is not flagged as a prototype
                 note_flags &= ~F4_Index_NoteFlag_Prototype;
