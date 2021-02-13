@@ -102,7 +102,65 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         F4_RenderErrorAnnotations(app, buffer, text_layout_id, compilation_buffer);
     }
     
-    // NOTE(rjf): Token highlight
+    // NOTE(jack): Token Occurance Highlight
+    if (!def_get_config_b32(vars_save_string_lit("f4_disable_cursor_token_occurance"))) 
+    {
+        ProfileScope(app, "[Fleury] Token Occurance Highlight");
+        
+        // NOTE(jack): Get the active cursor's token string
+        Buffer_ID active_cursor_buffer = view_get_buffer(app, active_view, Access_Always);
+        i64 active_cursor_pos = view_get_cursor_pos(app, active_view);
+        Token_Array active_cursor_buffer_tokens = get_token_array_from_buffer(app, active_cursor_buffer);
+        Token_Iterator_Array active_cursor_it = token_iterator_pos(0, &active_cursor_buffer_tokens, active_cursor_pos);
+        Token *active_cursor_token = token_it_read(&active_cursor_it);
+        
+        String_Const_u8 active_cursor_string = string_u8_litexpr("");
+        if(active_cursor_token)
+        {
+            active_cursor_string = push_buffer_range(app, scratch, active_cursor_buffer, Ii64(active_cursor_token));
+            
+            // Loop the visible tokens
+            Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+            i64 first_index = token_index_from_pos(&token_array, visible_range.first);
+            Token_Iterator_Array it = token_iterator_index(0, &token_array, first_index);
+            for (;;)
+            {
+                Token *token = token_it_read(&it);
+                if(!token || token->pos >= visible_range.one_past_last)
+                {
+                    break;
+                }
+                
+                if (token->kind == TokenBaseKind_Identifier)
+                {
+                    Range_i64 token_range = Ii64(token);
+                    String_Const_u8 token_string = push_buffer_range(app, scratch, buffer, token_range);
+                    
+                    // NOTE(jack) If this is the buffers cursor token, highlight it with an Underline
+                    if (range_contains(token_range, view_get_cursor_pos(app, view_id)))
+                    {
+                        F4_RenderRangeHighlight(app, view_id, text_layout_id,
+                                                token_range, F4_RangeHighlightKind_Underline);
+                    }
+                    // NOTE(jack): If the token matches the active buffer token. highlight it with a Minor Underline
+                    else if(active_cursor_token->kind == TokenBaseKind_Identifier && 
+                            string_match(token_string, active_cursor_string))
+                    {
+                        F4_RenderRangeHighlight(app, view_id, text_layout_id,
+                                                token_range, F4_RangeHighlightKind_MinorUnderline);
+                        
+                    } 
+                }
+                
+                if(!token_it_inc_non_whitespace(&it))
+                {
+                    break;
+                }
+            }
+        }
+    }
+    // NOTE(jack): if "f4_disable_cursor_token_occurance" is set, just highlight the cusror 
+    else
     {
         ProfileScope(app, "[Fleury] Token Highlight");
         

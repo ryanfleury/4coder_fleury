@@ -96,3 +96,4 @@ default_flags_sh  = "-g";
 // f4_disable_calc_comments = true;
 // f4_poscontext_draw_at_bottom_of_buffer = true;
 // f4_disable_poscontext = true;
+// f4_disable_cursor_token_occurance = true;

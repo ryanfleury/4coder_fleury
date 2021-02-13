@@ -7,6 +7,7 @@ enum F4_RangeHighlightKind
 {
     F4_RangeHighlightKind_Whole,
     F4_RangeHighlightKind_Underline,
+    F4_RangeHighlightKind_MinorUnderline,
 };
 
 function void F4_DrawTooltipRect(Application_Links *app, Rect_f32 rect);

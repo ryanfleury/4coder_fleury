@@ -139,6 +139,9 @@
 // - fleury_color_token_highlight: The color used to underline/highlight
 //   tokens that the cursor is over.
 //
+// - fleury_color_token_minor_highlight: The Color That is used for minor
+//   highlights. i.e. cursor token occurance underlines.
+//
 // - fleury_color_comment_user_name: The color used to highlight the
 //   username in comments.
 
@@ -174,6 +177,13 @@
 //   *compilation* window, it will display what that error is to the right of
 //   the line. Turn it off with "f4_disable_error_annotations" in your config
 //   file.
+//
+// - Cursor Identifier Highlight: The Identifier under the cursor is highlighted
+//   with an underline (using the fleury_color_token_highlight color). It also
+//   highlights all other occurances of the identifier (by string) that is
+//   visible and syntax highlighted (occurances are highlighted using 
+//   "fleury_color_token_minor_highlight". Turn the highlight of other occurances
+//   off with "f4_disable_cursor_token_occurance" in your config file.
 
 //~ @f4_calc_intro Built-In Calculator/Plotting
 //
