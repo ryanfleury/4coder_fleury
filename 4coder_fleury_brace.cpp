@@ -147,8 +147,14 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             // NOTE(rjf): Draw.
             if(start_token)
             {
-                draw_string(app, face_id, string_u8_litexpr("<-"), close_scope_pos, finalize_color(defcolor_comment, 0));
-                close_scope_pos.x += 28;
+                ARGB_Color color = finalize_color(defcolor_comment, 0);
+                Color_Array colors = finalize_color_array(fleury_color_brace_annotation);
+                if (colors.count >= 1 && F4_ARGBIsValid(colors.vals[0])) {
+                    color = colors.vals[(ranges.count - i - 1) % colors.count];
+                }
+                
+                // NOTE(jack) draw_string returns a Vec2_f32, start point for subsuquent calls.
+                close_scope_pos = draw_string(app, face_id, string_u8_litexpr("<- "), close_scope_pos, color);
                 String_Const_u8 start_line = push_buffer_line(app, scratch, buffer,
                                                               get_line_number_from_pos(app, buffer, start_token->pos));
                 
@@ -172,10 +178,7 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
                 {
                     start_line.size -= 1;
                 }
-                
-                u32 color = F4_ARGBFromID(active_color_table, fleury_color_brace_annotation, 0);
                 draw_string(app, face_id, start_line, close_scope_pos, color);
-                
             }
             
         }
@@ -287,8 +290,12 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             line_rect.x1 = x_position+1+x_offset;
             line_rect.y0 = y_start;
             line_rect.y1 = y_end;
-            u32 color = F4_ARGBFromID(active_color_table, fleury_color_brace_line);
-            draw_rectangle(app, line_rect, 0.5f, color);
+            
+            Color_Array colors = finalize_color_array(fleury_color_brace_line);
+            if (colors.count >= 1 && F4_ARGBIsValid(colors.vals[0])) {
+                draw_rectangle(app, line_rect, 0.5f, 
+                               colors.vals[(ranges.count - i - 1) % colors.count]);
+            }
         }
     }
 }
