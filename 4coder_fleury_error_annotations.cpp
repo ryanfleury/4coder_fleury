@@ -17,14 +17,14 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
     
     Marker_List *jump_list = nullptr;
     {
-        ProfileScope(app, "[Fleury] Error Annotations (Get Locked Jump State)");
+        ProfileScope(app, "[Fleury] Error Annotations (get_or_make_list_for_buffer)");
         jump_list = get_or_make_list_for_buffer(app, heap, jump_buffer);
     }
     
     Face_ID face = global_small_code_face;
     Face_Metrics metrics = get_face_metrics(app, face);
     
-    if(jump_buffer != 0)
+    if(jump_buffer != 0 && jump_list)
     {
         Managed_Scope buffer_scopes[2];
         {
@@ -56,13 +56,18 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
         }
         
         i64 last_line = -1;
-        
-        for(i32 i = 0; i < buffer_marker_count; i += 1)
-        {
+        for (i32 i = 0; i < jump_list->jump_count; i++) {
             ProfileScope(app, "[Fleury] Error Annotations (Buffer Loop)");
             
-            i64 jump_line_number = get_line_from_list(app, jump_list, i);
-            i64 code_line_number = get_line_number_from_pos(app, buffer, buffer_markers[i].pos);
+            Sticky_Jump_Stored stored{};
+            if (!get_stored_jump_from_list(app, jump_list, i, &stored) ||
+                stored.jump_buffer_id != buffer)
+            {
+                continue;
+            }
+            
+            i64 jump_line_number = stored.list_line;
+            i64 code_line_number = get_line_number_from_pos(app, buffer, buffer_markers[stored.index_into_marker_array].pos);
             
             if(code_line_number != last_line)
             {
