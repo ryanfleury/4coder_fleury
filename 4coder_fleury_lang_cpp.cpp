@@ -110,6 +110,20 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                 F4_Index_NoteFlags note_flags = 0;
                 F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags);
                 
+                if (F4_Index_PeekToken(ctx, S8Lit(":"))) {
+                    F4_Index_RequireToken(ctx, S8Lit(":"), flags);
+                    
+                    while (!ctx->done) {
+                        if (F4_Index_PeekTokenKind(ctx, TokenBaseKind_Identifier, nullptr) ||
+                            F4_Index_PeekTokenKind(ctx, TokenBaseKind_Keyword, nullptr))
+                        {
+                            F4_Index_ParseCtx_Inc(ctx, flags);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                
                 if(F4_Index_RequireToken(ctx, S8Lit("{"), flags))
                 {
                     Token *constant = 0;

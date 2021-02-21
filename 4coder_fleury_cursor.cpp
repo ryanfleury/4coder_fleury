@@ -95,7 +95,7 @@ DoTheCursorInterpolation(Application_Links *app, Frame_Info frame_info,
     float cursor_size_x = (target.x1 - target.x0);
     float cursor_size_y = (target.y1 - target.y0) * (1 + fabsf(y_change) / 60.f);
     
-    b32 should_animate_cursor = !global_battery_saver;
+    b32 should_animate_cursor = !global_battery_saver && !def_get_config_b32(vars_save_string_lit("f4_disable_cursor_trails"));
     if(should_animate_cursor)
     {
         if(fabs(x_change) > 1.f || fabs(y_change) > 1.f)
@@ -150,6 +150,18 @@ F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_activ
     flags |= !!power_mode.enabled * ColorFlag_PowerMode;
     ARGB_Color cursor_color = F4_GetColor(app, ColorCtx_Cursor(flags, GlobalKeybindingMode));
     ARGB_Color mark_color = cursor_color;
+    ARGB_Color inactive_cursor_color = F4_ARGBFromID(active_color_table, fleury_color_cursor_inactive, 0);
+    
+    if(!F4_ARGBIsValid(inactive_cursor_color))
+    {
+        inactive_cursor_color = cursor_color;
+    }
+    
+    if(is_active_view == 0)
+    {
+        cursor_color = inactive_cursor_color;
+        mark_color = inactive_cursor_color;
+    }
 	
     // TODO(rjf): REMOVE THIS
     {
@@ -225,8 +237,7 @@ F4_Cursor_RenderEmacsStyle(Application_Links *app, View_ID view_id, b32 is_activ
                 
                 // NOTE(rjf): Draw main cursor.
                 {
-                    C4_RenderCursorSymbolThingy(app, global_cursor_rect, roundness, 4.f, 
-                                                fcolor_resolve(fcolor_change_alpha(fcolor_argb(cursor_color), 0.5f)), cursor_type);
+                    C4_RenderCursorSymbolThingy(app, global_cursor_rect, roundness, 4.f, cursor_color, cursor_type);
 					C4_RenderCursorSymbolThingy(app, target_cursor, roundness, 4.f, cursor_color, cursor_type);
                 }
                 

@@ -110,7 +110,7 @@ F4_RenderErrorAnnotations(Application_Links *app, Buffer_ID buffer,
                             draw_position.x = last_character_on_line_rect.x1 + 30;
                         }
                         
-                        draw_string(app, face, jump_line, draw_position, 0xffff0000);
+                        draw_string(app, face, jump_line, draw_position, fcolor_id(fleury_color_error_annotation));
                         
                         Mouse_State mouse_state = get_mouse_state(app);
                         if(mouse_state.x >= region.x0 && mouse_state.x <= region.x1 &&

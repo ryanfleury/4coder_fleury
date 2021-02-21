@@ -8,7 +8,6 @@ F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_I
     if(!def_get_config_b32(vars_save_string_lit("f4_disable_brace_highlight")))
     {
         ProfileScope(app, "[F4] Brace Highlight");
-        
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
         if (token_array.tokens != 0)
         {
@@ -20,23 +19,17 @@ F4_Brace_RenderHighlight(Application_Links *app, Buffer_ID buffer, Text_Layout_I
             }
             else
             {
-                
                 if(token_it_dec_all(&it))
                 {
                     token = token_it_read(&it);
-                    
                     if (token->kind == TokenBaseKind_ScopeClose &&
                         pos == token->pos + token->size)
                     {
                         pos = token->pos;
                     }
-                    
                 }
-                
             }
-            
         }
-        
         draw_enclosures(app, text_layout_id, buffer,
                         pos, FindNest_Scope,
                         RangeHighlightKind_CharacterHighlight,
@@ -85,12 +78,18 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
         {
             Range_i64 range = ranges.ranges[i];
             
+            // NOTE(rjf): Turn this on to only display end scope annotations where the top is off-screen.
+#if 0
             if(range.start >= visible_range.start)
             {
                 continue;
             }
+#endif
             
-            Rect_f32 close_scope_rect = text_layout_character_on_screen(app, text_layout_id, range.end);
+            i64 line = get_line_number_from_pos(app, buffer, range.end);
+            i64 last_char = get_line_end_pos(app, buffer, line)-1;
+            
+            Rect_f32 close_scope_rect = text_layout_character_on_screen(app, text_layout_id, last_char);
             Vec2_f32 close_scope_pos = { close_scope_rect.x0 + 12, close_scope_rect.y0 };
             
             // NOTE(rjf): Find token set before this scope begins.
@@ -141,14 +140,12 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
                         break;
                     }
                 }
-                
             }
             
             // NOTE(rjf): Draw.
             if(start_token)
             {
-                draw_string(app, face_id, string_u8_litexpr("<-"), close_scope_pos, finalize_color(defcolor_comment, 0));
-                close_scope_pos.x += 28;
+                ARGB_Color color = F4_ARGBFromID(active_color_table, fleury_color_brace_annotation, 0);
                 String_Const_u8 start_line = push_buffer_line(app, scratch, buffer,
                                                               get_line_number_from_pos(app, buffer, start_token->pos));
                 
@@ -166,18 +163,14 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
                 }
                 start_line.str += first_non_whitespace_offset;
                 start_line.size -= first_non_whitespace_offset;
-                
-                //NOTE(rjf): Special case to handle CRLF-newline files.
+                // NOTE(rjf): Special case to handle CRLF-newline files.
                 if(start_line.str[start_line.size - 1] == 13)
                 {
                     start_line.size -= 1;
                 }
                 
-                u32 color = F4_ARGBFromID(active_color_table, fleury_color_brace_annotation, 0);
                 draw_string(app, face_id, start_line, close_scope_pos, color);
-                
             }
-            
         }
     }
     
