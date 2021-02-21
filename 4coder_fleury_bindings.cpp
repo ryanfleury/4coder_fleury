@@ -103,8 +103,10 @@ F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
     SelectMap(code_map_id);
     ParentMap(file_map_id);
     BindTextInput(fleury_write_text_and_auto_indent);
-	
-	SelectMap(global_command_map_id);
+    BindMouse(f4_lego_click_store_token_1, MouseCode_Right);
+    BindMouse(f4_lego_click_store_token_2, MouseCode_Middle);
+    
+    SelectMap(global_command_map_id);
 	ParentMap(global_map_id);
 	GlobalCommandMapReroute[0].From = global_map_id;
 	GlobalCommandMapReroute[0].To = global_command_map_id;

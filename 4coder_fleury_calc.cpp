@@ -1154,6 +1154,8 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
             DataChunk *last_data_chunk = data_chunk;
             
             b32 is_negative = 0;
+            int data_count;
+            float *data;
             for(;;)
             {
                 token = token_it_read(&it);
@@ -1199,8 +1201,8 @@ GetDataFromSourceCode(Application_Links *app, Buffer_ID buffer, Text_Layout_ID t
                 }
             }
             
-            int data_count = 0;
-            float *data = push_array_zero(arena, float, total_value_count);
+            data_count = 0;
+            data = push_array_zero(arena, float, total_value_count);
             for(DataChunk *chunk = first_data_chunk; chunk; chunk = chunk->next)
             {
                 for(int i = 0; i < ArrayCount(chunk->values); i += 1)
@@ -2441,11 +2443,9 @@ F4_CLC_RenderBuffer(Application_Links *app, Buffer_ID buffer, View_ID view,
 {
     Scratch_Block scratch(app);
     Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
-    char *code_buffer = push_array(scratch, char, (u32)(visible_range.end - visible_range.start) + 1);
-    MemorySet(code_buffer, 0, (u32)(visible_range.end - visible_range.start) + 1);
-    buffer_read_range(app, buffer, visible_range, (u8 *)code_buffer);
+    String_Const_u8 code_string = push_whole_buffer(app, scratch, buffer);
     F4_CLC_RenderCode(app, buffer, view, text_layout_id, frame_info, scratch,
-                      code_buffer, visible_range.start);
+                      (char *)code_string.str, visible_range.start);
 }
 
 function void
@@ -2498,9 +2498,8 @@ F4_CLC_RenderComments(Application_Links *app, Buffer_ID buffer, View_ID view,
                 token_buffer[token_buffer_size] = 0;
                 
                 if((token_buffer[0] == '/' && token_buffer[1] == '/' && token_buffer[2] == 'c' &&
-                    token_buffer[3] <= 32) ||
+                    character_is_whitespace(token_buffer[3])) ||
                    (token_buffer[0] == '/' && token_buffer[1] == '*' && token_buffer[2] == 'c'))
-                    
                 {
                     int is_multiline_comment = (token_buffer[1] == '*');
                     if(is_multiline_comment)
@@ -2511,9 +2510,7 @@ F4_CLC_RenderComments(Application_Links *app, Buffer_ID buffer, View_ID view,
                             token_buffer[token_buffer_size-2] = 0;
                         }
                     }
-                    
                     char *at = (char *)token_buffer + 3;
-                    
                     F4_CLC_RenderCode(app, buffer, view, text_layout_id, frame_info, scratch, at, token_range.start + 3);
                 }
             }

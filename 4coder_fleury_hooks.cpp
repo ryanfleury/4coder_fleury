@@ -140,14 +140,16 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                     if (range_contains(token_range, view_get_cursor_pos(app, view_id)))
                     {
                         F4_RenderRangeHighlight(app, view_id, text_layout_id,
-                                                token_range, F4_RangeHighlightKind_Underline);
+                                                token_range, F4_RangeHighlightKind_Underline,
+                                                fcolor_resolve(fcolor_id(fleury_color_token_highlight)));
                     }
                     // NOTE(jack): If the token matches the active buffer token. highlight it with a Minor Underline
                     else if(active_cursor_token->kind == TokenBaseKind_Identifier && 
                             string_match(token_string, active_cursor_string))
                     {
                         F4_RenderRangeHighlight(app, view_id, text_layout_id,
-                                                token_range, F4_RangeHighlightKind_MinorUnderline);
+                                                token_range, F4_RangeHighlightKind_MinorUnderline,
+                                                fcolor_resolve(fcolor_id(fleury_color_token_minor_highlight)));
                         
                     } 
                 }
@@ -170,8 +172,14 @@ F4_RenderBuffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         {
             F4_RenderRangeHighlight(app, view_id, text_layout_id,
                                     Ii64(token->pos, token->pos + token->size),
-                                    F4_RangeHighlightKind_Underline);
+                                    F4_RangeHighlightKind_Underline,
+                                    fcolor_resolve(fcolor_id(fleury_color_token_highlight)));
         }
+    }
+    
+    // NOTE(rjf): Flashes
+    {
+        F4_RenderFlashes(app, view_id, text_layout_id);
     }
     
     // NOTE(allen): Color parens
@@ -409,16 +417,16 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
     
+    f32 margin_size = (f32)def_get_config_u64(app, vars_save_string_lit("f4_margin_size"));
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
-    Rect_f32 region = rect_inner(view_rect, 2.f);
+    Rect_f32 region = rect_inner(view_rect, margin_size);
     
     Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
     String_Const_u8 buffer_name = push_buffer_base_name(app, scratch, buffer);
     
-    // NOTE(rjf): Draw background.
+    //~ NOTE(rjf): Draw background.
     {
         ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_back));
-        
         if(string_match(buffer_name, string_u8_litexpr("*compilation*")))
         {
             color = color_blend(color, 0.5f, 0xff000000);
@@ -432,22 +440,20 @@ F4_Render(Application_Links *app, Frame_Info frame_info, View_ID view_id)
                 color = inactive_bg_color;
             }
         }
-        
         draw_rectangle(app, region, 0.f, color);
         draw_margin(app, view_rect, region, color);
     }
     
-    // NOTE(rjf): Draw mode color border.
-    if(is_active_view)
+    //~ NOTE(rjf): Draw margin.
     {
-        ARGB_Color color = F4_GetColor(app, ColorCtx_Cursor(power_mode.enabled ? ColorFlag_PowerMode : 0,
-                                                            GlobalKeybindingMode));
-        color = argb_color_blend(color, 0.7f, 0, 0.3f);
+        ARGB_Color color = fcolor_resolve(fcolor_id(defcolor_margin));
+        if(def_get_config_b32(vars_save_string_lit("f4_margin_use_mode_color")) &&
+           is_active_view)
+        {
+            color = F4_GetColor(app, ColorCtx_Cursor(power_mode.enabled ? ColorFlag_PowerMode : 0,
+                                                     GlobalKeybindingMode));
+        }
         draw_margin(app, view_rect, region, color);
-    }
-    else
-    {
-        draw_margin(app, view_rect, region, fcolor_resolve(fcolor_id(defcolor_margin)));
     }
     
     Rect_f32 prev_clip = draw_set_clip(app, region);
@@ -837,6 +843,7 @@ F4_Tick(Application_Links *app, Frame_Info frame_info)
     F4_Index_Tick(app);
     F4_CLC_Tick(frame_info);
     F4_PowerMode_Tick(app, frame_info);
+    F4_UpdateFlashes(app, frame_info);
     
     // NOTE(rjf): Default tick stuff from the 4th dimension:
     default_tick(app, frame_info);

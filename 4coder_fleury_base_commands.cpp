@@ -116,7 +116,7 @@ F4_GoToDefinition(Application_Links *app, F4_Index_Note *note, b32 same_panel)
         Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
         scroll.position.line_number = line_number;
         scroll.target.line_number = line_number;
-        scroll.target.pixel_shift.y = -view_height*0.5f;
+        scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
         view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
         view_set_cursor(app, view, seek_pos(note->range.min));
         view_set_mark(app, view, seek_pos(note->range.min));
@@ -124,39 +124,74 @@ F4_GoToDefinition(Application_Links *app, F4_Index_Note *note, b32 same_panel)
 }
 
 internal F4_Index_Note *
-F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note)
+F4_FindMostIntuitiveNoteInDuplicateChain(F4_Index_Note *note, Buffer_ID cursor_buffer, i64 cursor_pos)
 {
-    if(note && note->flags & F4_Index_NoteFlag_Prototype)
+    F4_Index_Note *result = note;
+    if(note != 0)
     {
+        F4_Index_Note *best_note_based_on_cursor = 0;
         for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
         {
-            if(!(candidate->flags & F4_Index_NoteFlag_Prototype))
+            F4_Index_File *file = candidate->file;
+            if(file != 0)
             {
-                note = candidate;
-                break;
+                if(cursor_buffer == file->buffer &&
+                   candidate->range.min <= cursor_pos && cursor_pos <= candidate->range.max)
+                {
+                    if(candidate->next)
+                    {
+                        best_note_based_on_cursor = candidate->next;
+                        break;
+                    }
+                    else
+                    {
+                        best_note_based_on_cursor = note;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if(best_note_based_on_cursor)
+        {
+            result = best_note_based_on_cursor;
+        }
+        else if(note->flags & F4_Index_NoteFlag_Prototype)
+        {
+            for(F4_Index_Note *candidate = note; candidate; candidate = candidate->next)
+            {
+                if(!(candidate->flags & F4_Index_NoteFlag_Prototype))
+                {
+                    result = candidate;
+                    break;
+                }
             }
         }
     }
-    return note;
+    return result;
 }
 
 CUSTOM_COMMAND_SIG(f4_go_to_definition)
 CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
 {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Scratch_Block scratch(app);
     String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
     F4_Index_Note *note = F4_Index_LookupNote(string);
-    note = F4_FindMostIntuitiveNoteInDuplicateChain(note);
+    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
     F4_GoToDefinition(app, note, 0);
 }
 
 CUSTOM_COMMAND_SIG(f4_go_to_definition_same_panel)
 CUSTOM_DOC("Goes to the definition of the identifier under the cursor in the same panel.")
 {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Scratch_Block scratch(app);
     String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
     F4_Index_Note *note = F4_Index_LookupNote(string);
-    note = F4_FindMostIntuitiveNoteInDuplicateChain(note);
+    note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
     F4_GoToDefinition(app, note, 1);
 }
 
@@ -172,6 +207,8 @@ _F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister
         jump->buffer = buffer;
         jump->pos = note->range.first;
         
+        String_Const_u8 buffer_name = push_buffer_unique_name(app, arena, buffer);
+        String_Const_u8 name = push_stringf(arena, "[%.*s] %.*s", string_expand(buffer_name), string_expand(note->string));
         String_Const_u8 sort = S8Lit("");
         switch(note->kind)
         {
@@ -209,7 +246,7 @@ _F4_PushListerOptionForNote(Application_Links *app, Arena *arena, Lister *lister
             
             default: break;
         }
-        lister_add_item(lister, note->string, sort, jump, 0);
+        lister_add_item(lister, name, sort, jump, 0);
     }
 }
 
@@ -403,11 +440,11 @@ CUSTOM_DOC("Open a project by navigating to the project file.")
             if (HasFlag(attribs.flags, FileAttribute_IsDirectory)){
                 set_hot_directory(app, full_file_name);
                 continue;
-			}
-			if (string_looks_like_drive_letter(file_name)){
-				set_hot_directory(app, file_name);
-				continue;
-			}
+            }
+            if (string_looks_like_drive_letter(file_name)){
+                set_hot_directory(app, file_name);
+                continue;
+            }
             if (query_create_folder(app, file_name)){
                 set_hot_directory(app, full_file_name);
                 continue;
@@ -523,7 +560,6 @@ CUSTOM_DOC("Sets up a blank 4coder project provided some user folder.")
     
     load_project(app);
 }
-
 
 function i64
 F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer, 
@@ -1145,12 +1181,12 @@ CUSTOM_DOC("Interactively open a file out of the file system, filtered to files 
             {
                 set_hot_directory(app, full_file_name);
                 continue;
-			}
-			if(string_looks_like_drive_letter(file_name))
+            }
+            if(string_looks_like_drive_letter(file_name))
             {
-				set_hot_directory(app, file_name);
-				continue;
-			}
+                set_hot_directory(app, file_name);
+                continue;
+            }
             if(query_create_folder(app, file_name))
             {
                 set_hot_directory(app, full_file_name);

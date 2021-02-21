@@ -14,7 +14,7 @@
 
 //~ @f4_features 4coder Fleury Feature/Option List
 
-//~ @f4_lang_intro Multi-Language Support
+//- @f4_lang_intro Multi-Language Support
 //
 // This custom layer has been tweaked to allow for better multi-language support
 // in 4coder. It isn't perfect and will not support all languages, but it works
@@ -79,7 +79,7 @@
 // 3. Add the info for your language to the 4coder_fleury_lang_list.h file.
 // More information is in that file.
 
-//~ @f4_colors_intro Syntax Highlighting and Color Additions
+//- @f4_colors_intro Syntax Highlighting and Color Additions
 //
 // 4coder provides very basic syntax highlighting, but this layer implements
 // some more features, particularly ones that rely on the code index. There
@@ -144,9 +144,12 @@
 //
 // - fleury_color_comment_user_name: The color used to highlight the
 //   username in comments.
+// 
+// - fleury_color_error_annotation: Text color used for the inline error
+//   message string with F4_RenderErrorAnnotations
 
 
-//~ @f4_render_intro Rendering Features
+//- @f4_render_intro Rendering Features
 //
 // Many of the features in this layer are just rendering tweaks/improvements to
 // 4coder's defaults. Below is a list of features and some options for them.
@@ -185,7 +188,7 @@
 //   "fleury_color_token_minor_highlight". Turn the highlight of other occurances
 //   off with "f4_disable_cursor_token_occurance" in your config file.
 
-//~ @f4_calc_intro Built-In Calculator/Plotting
+//- @f4_calc_intro Built-In Calculator/Plotting
 //
 // This custom layer includes a tiny little calculator language, which has
 // plotting capabilities. It has a few features that comprise it all:
@@ -201,7 +204,7 @@
 //   to. The entire buffer is interpreted as calculator code, and it will
 //   do all the same things that calc comments do.
 
-//~ @f4_pos_context_intro Language Position-Context Tooltips
+//- @f4_pos_context_intro Language Position-Context Tooltips
 //
 // This feature shows tooltips relating to the current cursor position, as it
 // adheres to the programming language of the buffer in question. For example,
@@ -216,7 +219,7 @@
 // Alternatively, you can turn the whole thing off with "f4_disable_poscontext"
 // in your config file.
 
-//~ @f4_commands
+//- @f4_commands
 //
 // There are a lot of commands you can bind in your bindings.4coder file that
 // have been helpful for me and others. Here is a list of the most useful ones.
@@ -247,6 +250,8 @@
 //   include some animations, because I like animations. This will disable them,
 //   so your laptop doesn't get hot. Set its default value with "f4_battery_saver"
 //   in your config file.
+//
+// - f4_disable_cursor_trails: Turns off cursor animation.
 //
 // - f4_toggle_compilation_expand: Expands/shrinks the *compilation* panel at the
 //   bottom of the screen. Bind this to a key that you want to press when you are
@@ -349,6 +354,19 @@
 // DONE:
 //
 
+//~ TODO FOR CASEY
+//
+// [X] Active pane frame color/thickness control in Fleury config options, to allow turning it
+//     off entirely or changing the color
+//     done: f4_margin_size and f4_margin_use_mode_color
+// [X] Inactive pane color cursor differences
+// [X] Filenames to disambiguate indexed stuff with the same name
+// [X] Way to get to forward decl for an indexed thing too
+//     done: use go-to-definition again, at the definition site, and it should cycle between
+//     all the definitions
+// [ ] Fix clipboard stuff
+// [ ] CPM counter shenanigans
+
 //~ TODO PLOTS
 // [ ] Un-Bust Histograms
 // [ ] Fix plot clip rect bugs when the plot is not 100% in the visible range
@@ -357,7 +375,7 @@
 // [ ] Plots and Calc are so coupled and I hate it, please rewrite or something
 
 //~ TODO META
-// [ ] Project-wide todo list (by searching for TODO and DONE comments, lister for toggling)
+// [X] Project-wide todo list (by searching for TODO and DONE comments, lister for toggling)
 // [ ] Project switcher
 // [ ] Plan + do modal input scheme... Identifier-mode, text-mode, semantics mode, search mode...?
 
@@ -398,6 +416,7 @@ typedef int socklen_t;
 #include "4coder_fleury_cursor.h"
 #include "4coder_fleury_plot.h"
 #include "4coder_fleury_calc.h"
+#include "4coder_fleury_lego.h"
 #include "4coder_fleury_pos_context_tooltips.h"
 #include "4coder_fleury_code_peek.h"
 #include "4coder_fleury_recent_files.h"
@@ -422,6 +441,7 @@ typedef int socklen_t;
 #include "4coder_fleury_cursor.cpp"
 #include "4coder_fleury_plot.cpp"
 #include "4coder_fleury_calc.cpp"
+#include "4coder_fleury_lego.cpp"
 #include "4coder_fleury_pos_context_tooltips.cpp"
 #include "4coder_fleury_code_peek.cpp"
 #include "4coder_fleury_recent_files.cpp"
@@ -485,7 +505,6 @@ void custom_layer_init(Application_Links *app)
     }
 }
 
-
 //~ NOTE(rjf): @f4_startup Whenever 4coder's core is ready for the custom layer to start up,
 // this is called.
 
@@ -523,10 +542,18 @@ CUSTOM_DOC("Fleury startup event")
     
     //~ NOTE(rjf): Open special buffers.
     {
-        
         // NOTE(rjf): Open compilation buffer.
         {
             Buffer_ID comp_buffer = create_buffer(app, string_u8_litexpr("*compilation*"),
+                                                  BufferCreate_NeverAttachToFile |
+                                                  BufferCreate_AlwaysNew);
+            buffer_set_setting(app, comp_buffer, BufferSetting_Unimportant, true);
+            buffer_set_setting(app, comp_buffer, BufferSetting_ReadOnly, true);
+        }
+        
+        // NOTE(rjf): Open lego buffer.
+        {
+            Buffer_ID comp_buffer = create_buffer(app, string_u8_litexpr("*lego*"),
                                                   BufferCreate_NeverAttachToFile |
                                                   BufferCreate_AlwaysNew);
             buffer_set_setting(app, comp_buffer, BufferSetting_Unimportant, true);
@@ -574,10 +601,11 @@ CUSTOM_DOC("Fleury startup event")
             Face_Metrics metrics = get_face_metrics(app, face_id);
             view_set_split_pixel_size(app, compilation_view, (i32)(metrics.line_height*4.f));
             view_set_passive(app, compilation_view, true);
+            global_compilation_view = compilation_view;
+            view_set_buffer(app, compilation_view, comp_id, 0);
         }
-        view_set_buffer(app, compilation_view, comp_id, 0);
+        
         view_set_active(app, view);
-        global_compilation_view = compilation_view;
         
         // NOTE(rjf): Right Panel
         open_panel_vsplit(app);
@@ -596,6 +624,11 @@ CUSTOM_DOC("Fleury startup event")
         {
             load_project(app);
         }
+    }
+    
+    //~ NOTE(rjf): Set misc options.
+    {
+        global_battery_saver = def_get_config_b32(vars_save_string_lit("f4_battery_saver"));
     }
     
     //~ NOTE(rjf): Initialize audio.
