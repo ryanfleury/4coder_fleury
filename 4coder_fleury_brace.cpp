@@ -84,6 +84,12 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             {
                 continue;
             }
+#else
+            // NOTE(jack): Prevent brace annotations from printing on single line scopes.
+            if (get_line_number_from_pos(app, buffer, range.start) == get_line_number_from_pos(app, buffer, range.end))
+            {
+                continue;
+            }
 #endif
             
             i64 line = get_line_number_from_pos(app, buffer, range.end);
@@ -145,7 +151,12 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             // NOTE(rjf): Draw.
             if(start_token)
             {
-                ARGB_Color color = F4_ARGBFromID(active_color_table, fleury_color_brace_annotation, 0);
+                ARGB_Color color = finalize_color(defcolor_comment, 0);
+                Color_Array colors = finalize_color_array(fleury_color_brace_annotation);
+                if (colors.count >= 1 && F4_ARGBIsValid(colors.vals[0])) {
+                    color = colors.vals[(ranges.count - i - 1) % colors.count];
+                }
+                
                 String_Const_u8 start_line = push_buffer_line(app, scratch, buffer,
                                                               get_line_number_from_pos(app, buffer, start_token->pos));
                 
@@ -280,8 +291,12 @@ F4_Brace_RenderLines(Application_Links *app, Buffer_ID buffer, View_ID view,
             line_rect.x1 = x_position+1+x_offset;
             line_rect.y0 = y_start;
             line_rect.y1 = y_end;
-            u32 color = F4_ARGBFromID(active_color_table, fleury_color_brace_line);
-            draw_rectangle(app, line_rect, 0.5f, color);
+            
+            Color_Array colors = finalize_color_array(fleury_color_brace_line);
+            if (colors.count >= 1 && F4_ARGBIsValid(colors.vals[0])) {
+                draw_rectangle(app, line_rect, 0.5f, 
+                               colors.vals[(ranges.count - i - 1) % colors.count]);
+            }
         }
     }
 }

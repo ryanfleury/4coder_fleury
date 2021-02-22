@@ -174,6 +174,12 @@ F4_GetColor(Application_Links *app, ColorCtx ctx)
                             color = F4_ARGBFromID(table, fleury_color_index_constant);
                         }break;
                         
+                        case F4_Index_NoteKind_Decl:
+                        {
+                            FillFromFlag(F4_SyntaxFlag_Constants);
+                            color = F4_ARGBFromID(table, fleury_color_index_decl);
+                        }break;
+                        
                         default: color = 0xffff00ff; break;
                     }
                     

@@ -17,6 +17,7 @@ CUSTOM_ID(colors, fleury_color_index_function);
 CUSTOM_ID(colors, fleury_color_index_macro);
 CUSTOM_ID(colors, fleury_color_index_constant);
 CUSTOM_ID(colors, fleury_color_index_comment_tag);
+CUSTOM_ID(colors, fleury_color_index_decl);
 CUSTOM_ID(colors, fleury_color_cursor_macro);
 CUSTOM_ID(colors, fleury_color_cursor_power_mode);
 CUSTOM_ID(colors, fleury_color_cursor_inactive);
