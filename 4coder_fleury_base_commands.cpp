@@ -675,6 +675,83 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
     return(result);
 }
 
+function i64
+F4_Boundary_CursorTokenOrBlankLine(Application_Links *app, Buffer_ID buffer, 
+                                   Side side, Scan_Direction direction, i64 pos)
+{
+    Scratch_Block scratch(app);
+    
+    Range_i64_Array scopes = get_enclosure_ranges(app, scratch, buffer, pos, FindNest_Scope);
+    // NOTE(jack): The outermost scope
+    Range_i64 outer_scope = scopes.ranges[scopes.count - 1];
+    
+    // NOTE(jack): As we are issuing a move command here I will assume that buffer is the active buffer.
+    View_ID view = get_active_view(app, Access_Always);
+    i64 active_cursor_pos = view_get_cursor_pos(app, view);
+    Token_Array tokens = get_token_array_from_buffer(app, buffer);
+    Token_Iterator_Array active_cursor_it = token_iterator_pos(0, &tokens, active_cursor_pos);
+    Token *active_cursor_token = token_it_read(&active_cursor_it);
+    
+    String_Const_u8 cursor_string = push_buffer_range(app, scratch, buffer, Ii64(active_cursor_token));
+    i64 cursor_offset = pos - active_cursor_token->pos;
+    
+    // NOTE(jack): If the cursor token is not an identifier, we will move to empty lines
+    i64 result = get_pos_of_blank_line_grouped(app, buffer, direction, pos);
+    result = view_get_character_legal_pos_from_pos(app, view, result);
+    if (tokens.tokens != 0)
+    {
+        // NOTE(jack): if the the cursor token is an identifier, and we are inside of a scope
+        // perform the cursor occurance movement.
+        if (active_cursor_token->kind == TokenBaseKind_Identifier && !(scopes.count == 0))
+        {
+            // NOTE(jack): Reset result to prevent token movement to escape to blank line movement
+            // when you are on the first/last token in the outermost scope.
+            result = pos;
+            Token_Iterator_Array it = token_iterator_pos(0, &tokens, pos);
+            
+            for (;;)
+            {
+                b32 done = false;
+                // NOTE(jack): Incremenet first so we dont move to the same cursor that the cursor is on.
+                switch (direction)
+                {
+                    // NOTE(jack): I am using it.ptr->pos because its easier than reading the token with
+                    // token_it_read
+                    case Scan_Forward:
+                    {
+                        if (!token_it_inc_non_whitespace(&it) || it.ptr->pos >= outer_scope.end) {
+                            done = true;
+                        }
+                    } break;
+                    
+                    case Scan_Backward:
+                    {
+                        if (!token_it_dec_non_whitespace(&it) || it.ptr->pos < outer_scope.start) {
+                            done = true;
+                        }
+                    } break;
+                }
+                
+                if (!done) 
+                {
+                    Token *token = token_it_read(&it);
+                    String_Const_u8 token_string = push_buffer_range(app, scratch, buffer, Ii64(token));
+                    if (string_match(cursor_string, token_string)) {
+                        result = token->pos + cursor_offset;
+                        break;
+                    }
+                }
+                else 
+                {
+                    break;
+                }
+            }
+        }
+    }
+    
+    return result ;
+}
+
 CUSTOM_COMMAND_SIG(f4_move_left)
 CUSTOM_DOC("Moves the cursor one character to the left.")
 {
@@ -715,6 +792,20 @@ CUSTOM_DOC("Seek left for boundary between alphanumeric characters and non-alpha
 {
     Scratch_Block scratch(app);
     current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_TokenAndWhitespace));
+}
+
+CUSTOM_COMMAND_SIG(f4_move_up_token_occurance)
+CUSTOM_DOC("Moves the cusror to the previoud")
+{
+    Scratch_Block scratch(app);
+    current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
+}
+
+CUSTOM_COMMAND_SIG(f4_move_down_token_occurance)
+CUSTOM_DOC("Moves the cursor one charcter to the right.")
+{
+    Scratch_Block scratch(app);
+    current_view_scan_move(app, Scan_Forward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
 }
 
 CUSTOM_COMMAND_SIG(f4_backspace_token_boundary)
