@@ -1,22 +1,13 @@
 
 internal void
-F4_CPP_ParseMacroDefinition(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags)
+F4_CPP_ParseMacroDefinition(F4_Index_ParseCtx *ctx)
 {
     Token *name = 0;
-    if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
+    if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
     {
         F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
                           F4_Index_NoteKind_Macro, 0, Ii64(name));
-    }
-    for(;!ctx->done;)
-    {
-        Token *token = token_it_read(&ctx->it);
-        if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
-           token->kind == TokenBaseKind_Preprocessor)
-        {
-            break;
-        }
-        F4_Index_ParseCtx_IncWs(ctx);
+        F4_Index_SkipSoftTokens(ctx, 1);
     }
 }
 
@@ -28,410 +19,397 @@ F4_CPP_SkipParseBody(F4_Index_ParseCtx *ctx)
     
     for(;!ctx->done;)
     {
-        Token *token = token_it_read(&ctx->it);
-        Token *name;
-        if (!token) {
-            ctx->done = true;
-        }
-        // NOTE(jack): Comments and macros can occur inside bodies that we would like to skip,
-        //             and should still be indexed.
-        else if(F4_Index_PeekTokenKind(ctx, TokenBaseKind_Comment, &name))
+        Token *name = 0;
+        
+        if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Comment, &name))
         {
             F4_Index_ParseComment(ctx, name);
         }
-        // NOTE(jack): Macros
-        else if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, F4_Index_TokenSkipFlag_SkipWhitespace))
+        else if(F4_Index_ParsePattern(ctx, "%b", TokenCppKind_PPDefine, &name))
         {
-            F4_CPP_ParseMacroDefinition(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+            F4_CPP_ParseMacroDefinition(ctx);
         }
-        else if(token->sub_kind == TokenCppKind_BraceOp)
+        else if(F4_Index_ParsePattern(ctx, "%t", "{"))
         {
             nest += 1;
             body_found = 1;
         }
-        else if(token->sub_kind == TokenCppKind_BraceCl)
+        else if(F4_Index_ParsePattern(ctx, "%t", "}"))
         {
             nest -= 1;
             if(nest == 0)
             {
-                F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
                 break;
             }
         }
-        else if(body_found == 0) {
+        else if(body_found == 0)
+        {
             break;
         }
-        
-        F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+        else
+        {
+            F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+        }
     }
     return body_found;
+}
+
+function void
+F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx, F4_Index_NoteFlags note_flags)
+{
+    Token *name = 0;
+    b32 valid = 0;
+    b32 need_end_name = 0;
+    
+    if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+    {
+        valid = 1;
+    }
+    else
+    {
+        need_end_name = 1;
+    }
+    
+    if(F4_CPP_SkipParseBody(ctx))
+    {
+    }
+    else
+    {
+        note_flags |= F4_Index_NoteFlag_Prototype;
+    }
+    
+    if(need_end_name)
+    {
+        if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+        {
+            valid = 1;
+        }
+    }
+    
+    if(valid)
+    {
+        F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                          F4_Index_NoteKind_Type, note_flags, Ii64(name));
+    }
+}
+
+function b32
+F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx, b32 *prototype_ptr)
+{
+    b32 valid = 0;
+    b32 prototype = 0;
+    
+    for(;!ctx->done;)
+    {
+        Token *token = token_it_read(&ctx->it);
+        if(token == 0) { break; }
+        if(token->sub_kind == TokenCppKind_Semicolon)
+        {
+            valid = 1;
+            prototype = 1;
+            break;
+        }
+        else if(token->sub_kind == TokenCppKind_ParenCl)
+        {
+        }
+        else if(token->kind == TokenBaseKind_ScopeOpen)
+        {
+            valid = 1;
+            break;
+        }
+        F4_Index_ParseCtx_Inc(ctx, 0);
+    }
+    
+    if(valid)
+    {
+        if(prototype == 0)
+        {
+            F4_CPP_SkipParseBody(ctx);
+        }
+    }
+    
+    *prototype_ptr = prototype;
+    
+    return valid;
 }
 
 internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
 {
     int scope_nest = 0;
-    
-    for(;!ctx->done;)
+    for(b32 handled = 0; !ctx->done;)
     {
-        Token *name = 0;
-        F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
+        handled = 0;
         
-        // NOTE(rjf): Handle nests.
+        Token *name = 0;
+        Token *base_type = 0;
+        F4_Index_Note *containing_struct = 0;
+        F4_Index_Note *note = 0;
+        
+        if(0){}
+        
+        //~ NOTE(rjf): Extern "C" scope changes (ignore) ((dude C++ syntax is so fucked up))
+        // NOTE(rjf): CORRECTION: Text files in general are so fucked up, fuck all of this
+        // parsing bullshit
+        else if(F4_Index_ParsePattern(ctx, "%t%t%t", "extern", "C", "{"))
         {
-            Token *token = token_it_read(&ctx->it);
-            if(token && !(token->flags & TokenBaseFlag_PreprocessorBody))
+            handled = 1;
+        }
+        
+        //~ NOTE(rjf): Scope Nest Changes
+        else if(F4_Index_ParsePattern(ctx, "%t", "{"))
+        {
+            handled = 1;
+            scope_nest += 1;
+        }
+        else if(F4_Index_ParsePattern(ctx, "%t", "}"))
+        {
+            handled = 1;
+            scope_nest -= 1;
+            if(scope_nest < 0)
             {
-                if(token->kind == TokenBaseKind_ScopeOpen)
-                {
-                    scope_nest += 1;
-                }
-                else if(token->kind == TokenBaseKind_ScopeClose)
-                {
-                    scope_nest -= 1;
-                }
-                if(scope_nest < 0)
-                {
-                    scope_nest = 0;
-                }
+                scope_nest = 0;
             }
         }
         
-        b32 handled = 0;
-        
-        //~ NOTE(rjf): Typedef'd things
-        if(scope_nest == 0 && (F4_Index_RequireToken(ctx, S8Lit("typedef"), flags) ||
-                               (F4_Index_PeekToken(ctx, S8Lit("struct"))) ||
-                               (F4_Index_PeekToken(ctx, S8Lit("union"))) ||
-                               (F4_Index_PeekToken(ctx, S8Lit("enum")))))
+        //~ NOTE(rjf): Structs
+        else if(F4_Index_ParsePattern(ctx, "%t", "struct") ||
+                F4_Index_ParsePattern(ctx, "%t%t", "typedef", "struct"))
         {
-            //~ NOTE(rjf): Structs and Unions (nested declarations not parsed)
-            if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_Struct, &name, flags) ||
-               F4_Index_RequireTokenSubKind(ctx, TokenCppKind_Union, &name, flags))
+            handled = 1;
+            F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, 0);
+        }
+        
+        //~ NOTE(rjf): Unions
+        else if(F4_Index_ParsePattern(ctx, "%t", "union") ||
+                F4_Index_ParsePattern(ctx, "%t%t", "typedef", "union"))
+        {
+            handled = 1;
+            F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, F4_Index_NoteFlag_SumType);
+        }
+        
+        //~ NOTE(rjf): Enum Protoypes
+        else if(F4_Index_ParsePattern(ctx, "%t%k%t", "enum", TokenBaseKind_Identifier, &name, ";"))
+        {
+            handled = 1;
+            F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                              F4_Index_NoteKind_Type, 0, Ii64(name));
+        }
+        
+        //~ NOTE(rjf): Enum Definitions
+        else if(F4_Index_ParsePattern(ctx, "%t%k%t", "enum", TokenBaseKind_Identifier, &name, "{") ||
+                F4_Index_ParsePattern(ctx, "%t%t", "enum", "{"))
+        {
+            handled = 1;
+            if(name != 0)
             {
-                handled = 1;
-                F4_Index_NoteFlags note_flags = ((name->sub_kind == TokenCppKind_Struct) ?
-                                                 F4_Index_NoteFlag_ProductType : F4_Index_NoteFlag_SumType);
-
-                b32 name_found = F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags);
-                if(!F4_CPP_SkipParseBody(ctx))
-                {
-                    note_flags |= F4_Index_NoteFlag_Prototype;
-                }
-                if (name_found) {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Type,
-                                      note_flags, Ii64(name));
-                }
-                // NOTE(jack): clear the prototype flag so that the typedef'd name
-                // is not flagged as a prototype
-                note_flags &= ~F4_Index_NoteFlag_Prototype;
-                if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Type,
-                                      note_flags, Ii64(name));
-                }
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Type, 0, Ii64(name));
             }
-            
-            //~ NOTE(rjf): Enums
-            else if(F4_Index_RequireToken(ctx, string_u8_litexpr("enum"), flags))
+            for(;!ctx->done;)
             {
-                handled = 1;
-                F4_Index_NoteFlags note_flags = 0;
-                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags);
-                
-                if (F4_Index_PeekToken(ctx, S8Lit(":"))) {
-                    F4_Index_RequireToken(ctx, S8Lit(":"), flags);
-                    
-                    while (!ctx->done) {
-                        if (F4_Index_PeekTokenKind(ctx, TokenBaseKind_Identifier, nullptr) ||
-                            F4_Index_PeekTokenKind(ctx, TokenBaseKind_Keyword, nullptr))
-                        {
-                            F4_Index_ParseCtx_Inc(ctx, flags);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                
-                if(F4_Index_RequireToken(ctx, S8Lit("{"), flags))
+                Token *constant = 0;
+                if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, ","))
                 {
-                    Token *constant = 0;
+                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
+                }
+                else if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, "="))
+                {
+                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
                     
                     for(;!ctx->done;)
                     {
-                        if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &constant, flags))
+                        Token *token = token_it_read(&ctx->it);
+                        if(token->kind == TokenBaseKind_StatementClose)
                         {
-                            F4_Index_ParseComment(ctx, constant);
+                            F4_Index_ParseCtx_Inc(ctx, 0);
+                            break;
                         }
-                        // NOTE(jack): Macros
-                        if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, flags))
-                        {
-                            // NOTE(jack): If the defined token is the enum type name, 
-                            // don't note it as an macro
-                            // typedef enum Key 
-                            // {
-                            // #define Key(name, str) Key_##name,
-                            // #include "os_key_list.inc"
-                            // #undef Key
-                            //    Key_Max
-                            //  } Key;
-                            
-                            if(!F4_Index_PeekToken(ctx, F4_Index_StringFromToken(ctx, name)))
-                            {
-                                F4_CPP_ParseMacroDefinition(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
-                            }
-                            else 
-                            {
-                                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, 0, flags);
-                                for(;!ctx->done;)
-                                {
-                                    Token *token = token_it_read(&ctx->it);
-                                    if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
-                                       token->kind == TokenBaseKind_Preprocessor)
-                                    {
-                                        break;
-                                    }
-                                    F4_Index_ParseCtx_IncWs(ctx);
-                                }
-                            }
-                        }
-                        
-                        // NOTE(jack): On #undef skip past the identifier so that it isn't noted as a constant
-                        if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPUndef, 0, flags))
-                        {
-                            F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, 0, flags);
-                        }
-                        if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &constant, flags))
-                        {
-                            F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
-                            
-                            // NOTE(rjf): Need to skip initializer.
-                            if(F4_Index_RequireToken(ctx, S8Lit("="), flags))
-                            {
-                                for(;!ctx->done;)
-                                {
-                                    if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &constant, flags))
-                                    {
-                                        F4_Index_ParseComment(ctx, constant);
-                                    }
-                                    if(F4_Index_PeekToken(ctx, S8Lit("}")) ||
-                                       F4_Index_PeekToken(ctx, S8Lit(",")))
-                                    {
-                                        break;
-                                    }
-                                    F4_Index_ParseCtx_IncWs(ctx);
-                                }
-                            }
-                        }
-                        
-                        if(F4_Index_RequireToken(ctx, S8Lit(","), flags))
-                        {
-                        }
-                        else if(F4_Index_RequireToken(ctx, S8Lit("}"), flags))
+                        else if(token->kind == TokenBaseKind_ScopeClose ||
+                                token->kind == TokenBaseKind_ScopeOpen)
                         {
                             break;
                         }
-                        else
-                        {
-                            F4_Index_ParseCtx_IncWs(ctx);
-                        }
+                        F4_Index_ParseCtx_Inc(ctx, 0);
                     }
+                }
+                else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &constant))
+                {
+                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
+                }
+                else if(F4_Index_ParsePattern(ctx, "%t", "}"))
+                {
+                    break;
                 }
                 else
                 {
-                    note_flags |= F4_Index_NoteFlag_Prototype;
-                }
-                
-                if(name)
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Type,
-                                      note_flags, Ii64(name));
-                }
-                
-                // NOTE(jack): clear the prototype flag so that the typedef'd name
-                // is not flagged as a prototype
-                note_flags &= ~F4_Index_NoteFlag_Prototype;
-                if (F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &name, flags))
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Type,
-                                      note_flags, Ii64(name));
-                }
-            }
-            
-            //~ NOTE(rjf): Regular Typedef
-            else
-            {
-                Token *aliased_type_token = token_it_read(&ctx->it);
-                for(;token_it_inc_all(&ctx->it);)
-                {
-                    Token *token = token_it_read(&ctx->it);
-                    if(token)
-                    {
-                        if(token->kind == TokenBaseKind_Identifier)
-                        {
-                            name = token;
-                        }
-                        else if(token->kind == TokenBaseKind_StatementClose ||
-                                token->kind == TokenBaseKind_ParentheticalOpen)
-                        {
-                            break;
-                        }
-                    }
-                }
-                F4_Index_SeekToken(ctx, S8Lit(";"));
-                if(name)
-                {
-                    F4_Index_Note* aliased_type_index_note = F4_Index_LookupNote(F4_Index_StringFromToken(ctx, aliased_type_token));
-                    F4_Index_NoteFlags note_flags = 0;
-                    
-                    if (aliased_type_index_note) {
-                        note_flags = aliased_type_index_note->flags;
-                    }
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Type,
-                                      note_flags, Ii64(name));
+                    F4_Index_ParseCtx_Inc(ctx, 0);
                 }
             }
         }
-        //~ NOTE(rjf): Macros
-        else if(F4_Index_RequireTokenSubKind(ctx, TokenCppKind_PPDefine, 0, flags))
+        
+        //~ NOTE(rjf): Pure Typedefs
+        else if(F4_Index_ParsePattern(ctx, "%t", "typedef"))
         {
             handled = 1;
-            F4_CPP_ParseMacroDefinition(ctx, flags);
+            int nest = 0;
+            b32 sum_type = 0;
+            for(;!ctx->done;)
+            {
+                if(F4_Index_ParsePattern(ctx, "%t", "("))
+                {
+                    nest += 1;
+                }
+                else if(F4_Index_ParsePattern(ctx, "%t", "("))
+                {
+                    nest -= 1;
+                }
+                else if(nest == 0 && F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+                {
+                    String8 namestr = F4_Index_StringFromToken(ctx, name);
+                    F4_Index_Note *namenote = F4_Index_LookupNote(namestr, 0);
+                    if(namenote != 0 && namenote->kind == F4_Index_NoteKind_Type &&
+                       namenote->flags & F4_Index_NoteFlag_SumType)
+                    {
+                        sum_type = 1;
+                    }
+                }
+                else if(F4_Index_ParsePattern(ctx, "%t", ";"))
+                {
+                    break;
+                }
+                else 
+                {
+                    F4_Index_ParseCtx_Inc(ctx, 0);
+                }
+            }
+            if(name != 0)
+            {
+                F4_Index_NoteFlags note_flags = 0;
+                if(sum_type)
+                {
+                    note_flags |= F4_Index_NoteFlag_SumType;
+                }
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Type, note_flags, Ii64(name));
+            }
+        }
+        
+        //~ NOTE(rjf): Functions
+        else if(scope_nest == 0 &&
+                (F4_Index_ParsePattern(ctx, "%k%o%k%t",
+                                       TokenBaseKind_Identifier, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       "(") ||
+                 F4_Index_ParsePattern(ctx, "%k%o%k%t",
+                                       TokenBaseKind_Keyword, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       "(")))
+        {
+            b32 prototype = 0;
+            if(F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(ctx, &prototype))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0, Ii64(name));
+            }
+        }
+        
+        //~ NOTE(rjf): Member Functions
+        else if(scope_nest == 0 &&
+                (F4_Index_ParsePattern(ctx, "%k%o%n%t%k%t",
+                                       TokenBaseKind_Identifier, &base_type,
+                                       F4_Index_NoteKind_Type, &containing_struct,
+                                       "::",
+                                       TokenBaseKind_Identifier, &name,
+                                       "(") ||
+                 F4_Index_ParsePattern(ctx, "%k%o%n%t%k%t",
+                                       TokenBaseKind_Keyword, &base_type,
+                                       F4_Index_NoteKind_Type, &containing_struct,
+                                       "::",
+                                       TokenBaseKind_Identifier, &name,
+                                       "(")))
+        {
+            b32 prototype = 0;
+            if(F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(ctx, &prototype))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, containing_struct, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0, Ii64(name));
+            }
+        }
+        
+        //~ NOTE(rjf): Declarations
+        else if(scope_nest == 0 &&
+                (F4_Index_ParsePattern(ctx, "%k%o%k%o%t",
+                                       TokenBaseKind_Identifier, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       ";") ||
+                 F4_Index_ParsePattern(ctx, "%k%o%k%o%t",
+                                       TokenBaseKind_Keyword, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       ";") ||
+                 F4_Index_ParsePattern(ctx, "%k%o%k%t",
+                                       TokenBaseKind_Identifier, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       "=") ||
+                 F4_Index_ParsePattern(ctx, "%k%o%k%t",
+                                       TokenBaseKind_Keyword, &base_type,
+                                       TokenBaseKind_Identifier, &name,
+                                       "=")))
+        {
+            F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name), F4_Index_NoteKind_Decl, 0, Ii64(name));
+        }
+        
+        //~ NOTE(rjf): Macro Functions
+        else if(0 && F4_Index_ParsePattern(ctx, "%n%t%k",
+                                           F4_Index_NoteKind_Macro, &note,
+                                           "(",
+                                           TokenBaseKind_Identifier, &name))
+        {
+            b32 valid = 0;
+            b32 prototype = 0;
+            
+            for(;!ctx->done;)
+            {
+                Token *token = token_it_read(&ctx->it);
+                if(token == 0) { break; }
+                if(token->sub_kind == TokenCppKind_Semicolon)
+                {
+                    prototype = 1;
+                    valid = 1;
+                    break;
+                }
+                else if(token->sub_kind == TokenCppKind_ParenCl)
+                {
+                }
+                else if(token->kind == TokenBaseKind_ScopeOpen)
+                {
+                    valid = 1;
+                    break;
+                }
+                F4_Index_ParseCtx_Inc(ctx, 0);
+            }
+            
+            if(valid)
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0, Ii64(name));
+                F4_CPP_SkipParseBody(ctx);
+            }
         }
         
         //~ NOTE(rjf): Comment Tags
-        else if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &name, F4_Index_TokenSkipFlag_SkipWhitespace))
+        else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Comment, &name))
         {
             handled = 1;
             F4_Index_ParseComment(ctx, name);
         }
         
-        //~ NOTE(rjf): Functions
-        else if(scope_nest == 0)
+        //~ NOTE(rjf): Macros
+        else if(F4_Index_ParsePattern(ctx, "%b", TokenCppKind_PPDefine, &name))
         {
-            Token_Iterator_Array it_restore = ctx->it;
-            if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, 0, flags) ||
-               F4_Index_RequireTokenKind(ctx, TokenBaseKind_Keyword, 0, flags))
-            {
-                b32 semicolon = 0;
-                
-                int mode = 0;
-                enum
-                {
-                    ReadMode_Name,
-                    ReadMode_OpenParen,
-                    ReadMode_CloseParen,
-                    ReadMode_SemicolonOrBrace,
-                    ReadMode_Valid,
-                };
-                
-                int paren_nest = 0;
-                for(;;)
-                {
-                    switch(mode)
-                    {
-                        case ReadMode_Name:
-                        {
-                            if(F4_Index_PeekTokenKind(ctx, TokenBaseKind_Identifier, &name))
-                            {
-                                mode = ReadMode_OpenParen;
-                            }
-                            else if(F4_Index_PeekTokenSubKind(ctx, TokenCppKind_Star, &name))
-                            {
-                            }
-                            else
-                            {
-                                goto end;
-                            }
-                        }break;
-                        
-                        case ReadMode_OpenParen:
-                        {
-                            if(F4_Index_PeekToken(ctx, S8Lit("(")))
-                            {
-                                mode = ReadMode_CloseParen;
-                            }
-                            else
-                            {
-                                goto end;
-                            }
-                        }break;
-                        
-                        case ReadMode_CloseParen:
-                        {
-                            if(F4_Index_PeekToken(ctx, S8Lit("(")))
-                            {
-                                paren_nest += 1;
-                            }
-                            else if(F4_Index_PeekToken(ctx, S8Lit(")")))
-                            {
-                                paren_nest -= 1;
-                                if(paren_nest < 0)
-                                {
-                                    mode = ReadMode_SemicolonOrBrace;
-                                }
-                            }
-                        }break;
-                        
-                        case ReadMode_SemicolonOrBrace:
-                        {
-                            if(F4_Index_PeekToken(ctx, S8Lit(";")))
-                            {
-                                mode = ReadMode_Valid;
-                                semicolon = 1;
-                                token_it_inc_all(&ctx->it);
-                                goto end;
-                            }
-                            else if(F4_Index_PeekToken(ctx, S8Lit("{")))
-                            {
-                                mode = ReadMode_Valid;
-                                F4_CPP_SkipParseBody(ctx);
-                                goto end;
-                            }
-                            else
-                            {
-                                goto end;
-                            }
-                        }break;
-                        
-                        default: break;
-                    }
-                    
-                    if(!token_it_inc_non_whitespace(&ctx->it))
-                    {
-                        break;
-                    }
-                }
-                end:;
-                
-                if(mode == ReadMode_Valid)
-                {
-                    handled = 1;
-                    F4_Index_NoteFlags note_flags = 0;
-                    if(semicolon)
-                    {
-                        note_flags |= F4_Index_NoteFlag_Prototype;
-                    }
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0,
-                                      F4_Index_StringFromToken(ctx, name),
-                                      F4_Index_NoteKind_Function,
-                                      note_flags, Ii64(name));
-                }
-                else
-                {
-                    ctx->it = it_restore;
-                }
-            }
+            handled = 1;
+            F4_CPP_ParseMacroDefinition(ctx);
         }
+        
         
         if(handled == 0)
         {

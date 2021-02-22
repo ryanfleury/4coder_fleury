@@ -517,9 +517,10 @@ F4_Index_PeekTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_ou
     return result;
 }
 
-internal void
+internal b32
 F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string)
 {
+    b32 found = 0;
     Token_Iterator_Array it_restore = ctx->it;
     for(;;)
     {
@@ -529,6 +530,7 @@ F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string)
             String_Const_u8 token_string = F4_Index_StringFromToken(ctx, token);
             if(string_match(token_string, string))
             {
+                found = 1;
                 break;
             }
         }
@@ -541,7 +543,11 @@ F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string)
             break;
         }
     }
-    ctx->it = it_restore;
+    if(found == 0)
+    {
+        ctx->it = it_restore;
+    }
+    return found;
 }
 
 internal void
@@ -571,7 +577,8 @@ F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc)
         Token *token = token_it_read(&ctx->it);
         if(preproc)
         {
-            if(!(token->flags & TokenBaseFlag_PreprocessorBody))
+            if(!(token->flags & TokenBaseFlag_PreprocessorBody) ||
+               token->kind == TokenBaseKind_Preprocessor)
             {
                 break;
             }
@@ -590,6 +597,132 @@ F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc)
             break;
         }
     }
+}
+
+internal void
+F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx)
+{
+    int paren_nest = 0;
+    for(;!ctx->done;)
+    {
+        Token *token = token_it_read(&ctx->it);
+        if(token->kind == TokenBaseKind_ParentheticalOpen)
+        {
+            paren_nest += 1;
+        }
+        else if(token->kind == TokenBaseKind_ParentheticalClose)
+        {
+            paren_nest -= 1;
+            if(paren_nest < 0)
+            {
+                paren_nest = 0;
+            }
+        }
+        else if(token->kind != TokenBaseKind_Operator && paren_nest == 0)
+        {
+            break;
+        }
+        F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace);
+    }
+}
+
+function b32
+F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
+{
+    b32 parsed = 1;
+    
+    F4_Index_ParseCtx ctx_restore = *ctx;
+    F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
+    
+    va_list args;
+    va_start(args, fmt);
+    for(int i = 0; fmt[i];)
+    {
+        if(fmt[i] == '%')
+        {
+            switch(fmt[i+1])
+            {
+                case 't':
+                {
+                    char *cstring = va_arg(args, char *);
+                    String8 string = SCu8((u8 *)cstring, cstring_length(cstring));
+                    parsed = parsed && F4_Index_RequireToken(ctx, string, flags);
+                }break;
+                
+                case 'k':
+                {
+                    Token_Base_Kind kind = va_arg(args, Token_Base_Kind);
+                    Token **output_token = va_arg(args, Token **);
+                    parsed = parsed && F4_Index_RequireTokenKind(ctx, kind, output_token, flags);
+                }break;
+                
+                case 'b':
+                {
+                    i16 kind = va_arg(args, i16);
+                    Token **output_token = va_arg(args, Token **);
+                    parsed = parsed && F4_Index_RequireTokenSubKind(ctx, kind, output_token, flags);
+                }break;
+                
+                case 'n':
+                {
+                    F4_Index_NoteKind kind = va_arg(args, F4_Index_NoteKind);
+                    F4_Index_Note **output_note = va_arg(args, F4_Index_Note **);
+                    Token *token = 0;
+                    parsed = parsed && F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &token, flags);
+                    parsed = parsed && !!token;
+					if (parsed)
+					{
+						String8 token_string = F4_Index_StringFromToken(ctx, token);
+						F4_Index_Note *note = F4_Index_LookupNote(token_string, 0);
+                        b32 kind_match = 0;
+                        for(F4_Index_Note *n = note; n; n = n->next)
+                        {
+                            if(n->kind == kind)
+                            {
+                                kind_match = 1;
+                                note = n;
+                                break;
+                            }
+                        }
+						if (note && kind_match)
+						{
+							*output_note = note;
+							parsed = 1;
+						}
+						else
+						{
+							parsed = 0;
+						}
+					}
+                }break;
+                
+                case 's':
+                {
+                    F4_Index_SkipSoftTokens(ctx, 0);
+                }break;
+                
+                case 'o':
+                {
+                    F4_Index_SkipOpTokens(ctx);
+                }break;
+                
+                default: break;
+            }
+			i += 1;
+        }
+        else
+        {
+            i += 1;
+        }
+    }
+    
+    va_end(args);
+    
+    if(parsed == 0)
+    {
+        *ctx = ctx_restore;
+    }
+    return parsed;
 }
 
 internal void

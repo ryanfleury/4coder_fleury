@@ -14,7 +14,7 @@ enum F4_Index_NoteKind
     F4_Index_NoteKind_Macro,
     F4_Index_NoteKind_CommentTag,
     F4_Index_NoteKind_CommentToDo,
-    F4_Index_NoteKind_MAX,
+    F4_Index_NoteKind_COUNT
 };
 
 typedef u32 F4_Index_NoteFlags;
@@ -109,9 +109,20 @@ internal b32 F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, 
 internal b32 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
 internal b32 F4_Index_PeekTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out);
 internal b32 F4_Index_PeekTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out);
-internal void F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
+internal b32 F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
 internal void F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token);
+internal void F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc);
+internal void F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx);
 internal String_Const_u8 F4_Index_StringFromToken(F4_Index_ParseCtx* ctx, Token* token);
 internal void F4_Index_Tick(Application_Links *app);
+
+// Format:
+// %t -> token,         requires char * specifying token string
+// %k -> token kind,    requires Token_Base_Kind and Token ** for output token
+// %b -> token subkind, requires token subkind and Token ** for output token
+// %n -> note,          requires F4_Index_NoteKind and F4_Index_Note ** for output note
+// %s -> soft group,    requires no arguments
+// %o -> operator group,requires no arguments
+function b32 F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...);
 
 #endif // FCODER_FLEURY_INDEX_H

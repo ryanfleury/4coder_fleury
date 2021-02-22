@@ -84,6 +84,12 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             {
                 continue;
             }
+#else
+            // NOTE(jack): Prevent brace annotations from printing on single line scopes.
+            if (get_line_number_from_pos(app, buffer, range.start) == get_line_number_from_pos(app, buffer, range.end))
+            {
+                continue;
+            }
 #endif
             
             i64 line = get_line_number_from_pos(app, buffer, range.end);
