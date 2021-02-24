@@ -220,19 +220,37 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
         }
         
         //~ NOTE(rjf): Structs
-        else if(F4_Index_ParsePattern(ctx, "%t", "struct") ||
-                F4_Index_ParsePattern(ctx, "%t%t", "typedef", "struct"))
+        else if(F4_Index_ParsePattern(ctx, "%t", "struct"))
+        {
+            handled = 1;
+            F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, F4_Index_NoteFlag_ProductType);
+        }
+        else if(F4_Index_ParsePattern(ctx, "%t%t", "typedef", "struct"))
         {
             handled = 1;
             F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, 0);
+            if (F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Type, F4_Index_NoteFlag_ProductType, Ii64(name));
+            }
         }
         
         //~ NOTE(rjf): Unions
-        else if(F4_Index_ParsePattern(ctx, "%t", "union") ||
-                F4_Index_ParsePattern(ctx, "%t%t", "typedef", "union"))
+        else if(F4_Index_ParsePattern(ctx, "%t", "union"))
         {
             handled = 1;
             F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, F4_Index_NoteFlag_SumType);
+        }
+        else if (F4_Index_ParsePattern(ctx, "%t%t", "typedef", "union"))
+        {
+            handled = 1;
+            F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, F4_Index_NoteFlag_SumType);
+            if (F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Type, F4_Index_NoteFlag_SumType, Ii64(name));
+            }
         }
         
         //~ NOTE(rjf): Typedef'd Enums
