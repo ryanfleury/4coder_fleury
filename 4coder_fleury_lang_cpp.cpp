@@ -133,6 +133,54 @@ F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx, b32 *proto
     return valid;
 }
 
+function void
+F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(F4_Index_ParseCtx *ctx)
+{
+    if(F4_Index_ParsePattern(ctx, "%t", "{"))
+    {
+        for(;!ctx->done;)
+        {
+            Token *constant = 0;
+            if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, ","))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
+            }
+            else if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, "="))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
+                
+                for(;!ctx->done;)
+                {
+                    Token *token = token_it_read(&ctx->it);
+                    if(token->kind == TokenBaseKind_StatementClose)
+                    {
+                        F4_Index_ParseCtx_Inc(ctx, 0);
+                        break;
+                    }
+                    else if(token->kind == TokenBaseKind_ScopeClose ||
+                            token->kind == TokenBaseKind_ScopeOpen)
+                    {
+                        break;
+                    }
+                    F4_Index_ParseCtx_Inc(ctx, 0);
+                }
+            }
+            else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &constant))
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
+            }
+            else if(F4_Index_ParsePattern(ctx, "%t", "}"))
+            {
+                break;
+            }
+            else
+            {
+                F4_Index_ParseCtx_Inc(ctx, 0);
+            }
+        }
+    }
+}
+
 internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
 {
     int scope_nest = 0;
@@ -187,63 +235,51 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
             F4_CPP_ParseStructOrUnionBodyIFuckingHateCPlusPlus(ctx, F4_Index_NoteFlag_SumType);
         }
         
-        //~ NOTE(rjf): Enum Protoypes
-        else if(F4_Index_ParsePattern(ctx, "%t%k%t", "enum", TokenBaseKind_Identifier, &name, ";"))
+        //~ NOTE(rjf): Typedef'd Enums
+        else if(F4_Index_ParsePattern(ctx, "%t%t%k", "typedef", "enum", TokenBaseKind_Identifier, &name) ||
+                F4_Index_ParsePattern(ctx, "%t%t", "typedef", "enum"))
         {
             handled = 1;
-            F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
-                              F4_Index_NoteKind_Type, 0, Ii64(name));
-        }
-        
-        //~ NOTE(rjf): Enum Definitions
-        else if(F4_Index_ParsePattern(ctx, "%t%k%t", "enum", TokenBaseKind_Identifier, &name, "{") ||
-                F4_Index_ParsePattern(ctx, "%t%t", "enum", "{"))
-        {
-            handled = 1;
+            b32 prototype = 0;
+            b32 possible_name_at_end = name == 0;
+            if(F4_Index_ParsePattern(ctx, "%t", ";"))
+            {
+                prototype = 1;
+            }
+            if(prototype == 0)
+            {
+                F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(ctx);
+            }
+            if(possible_name_at_end)
+            {
+                if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &name))
+                {}
+            }
             if(name != 0)
             {
                 F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
-                                  F4_Index_NoteKind_Type, 0, Ii64(name));
+                                  F4_Index_NoteKind_Type, prototype ? F4_Index_NoteFlag_Prototype : 0, Ii64(name));
             }
-            for(;!ctx->done;)
+        }
+        
+        //~ NOTE(rjf): Enums
+        else if(F4_Index_ParsePattern(ctx, "%t%k", "enum", TokenBaseKind_Identifier, &name) ||
+                F4_Index_ParsePattern(ctx, "%t", "enum"))
+        {
+            handled = 1;
+            b32 prototype = 0;
+            if(F4_Index_ParsePattern(ctx, "%t", ";"))
             {
-                Token *constant = 0;
-                if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, ","))
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
-                }
-                else if(F4_Index_ParsePattern(ctx, "%k%t", TokenBaseKind_Identifier, &constant, "="))
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
-                    
-                    for(;!ctx->done;)
-                    {
-                        Token *token = token_it_read(&ctx->it);
-                        if(token->kind == TokenBaseKind_StatementClose)
-                        {
-                            F4_Index_ParseCtx_Inc(ctx, 0);
-                            break;
-                        }
-                        else if(token->kind == TokenBaseKind_ScopeClose ||
-                                token->kind == TokenBaseKind_ScopeOpen)
-                        {
-                            break;
-                        }
-                        F4_Index_ParseCtx_Inc(ctx, 0);
-                    }
-                }
-                else if(F4_Index_ParsePattern(ctx, "%k", TokenBaseKind_Identifier, &constant))
-                {
-                    F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, constant), F4_Index_NoteKind_Constant, 0, Ii64(constant));
-                }
-                else if(F4_Index_ParsePattern(ctx, "%t", "}"))
-                {
-                    break;
-                }
-                else
-                {
-                    F4_Index_ParseCtx_Inc(ctx, 0);
-                }
+                prototype = 1;
+            }
+            if(prototype == 0)
+            {
+                F4_CPP_ParseEnumBodyIFuckingHateCPlusPlus(ctx);
+            }
+            if(name != 0)
+            {
+                F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
+                                  F4_Index_NoteKind_Type, prototype ? F4_Index_NoteFlag_Prototype : 0, Ii64(name));
             }
         }
         
@@ -305,6 +341,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                        TokenBaseKind_Identifier, &name,
                                        "(")))
         {
+            handled = 1;
             b32 prototype = 0;
             if(F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(ctx, &prototype))
             {
@@ -328,6 +365,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                        TokenBaseKind_Identifier, &name,
                                        "(")))
         {
+            handled = 1;
             b32 prototype = 0;
             if(F4_CPP_ParseFunctionBodyIFuckingHateCPlusPlus(ctx, &prototype))
             {
@@ -355,6 +393,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
                                        TokenBaseKind_Identifier, &name,
                                        "=")))
         {
+            handled = 1;
             F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name), F4_Index_NoteKind_Decl, 0, Ii64(name));
         }
         
@@ -390,6 +429,7 @@ internal F4_LANGUAGE_INDEXFILE(F4_CPP_IndexFile)
             
             if(valid)
             {
+                handled = 1;
                 F4_Index_MakeNote(ctx->app, ctx->file, 0, F4_Index_StringFromToken(ctx, name),
                                   F4_Index_NoteKind_Function, prototype ? F4_Index_NoteFlag_ProductType : 0, Ii64(name));
                 F4_CPP_SkipParseBody(ctx);

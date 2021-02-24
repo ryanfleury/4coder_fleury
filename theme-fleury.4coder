@@ -32,13 +32,13 @@ defcolor_highlight_junk        = 0xFF3A0000;
 defcolor_highlight_white       = 0xFF003A3A;
 defcolor_paste                 = 0xFFDDEE00;
 defcolor_undo                  = 0xFF00DDEE;
-defcolor_back_cycle            = { 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF601212, 0xFF601212, 0xFF601212, 0xFF601212};
+defcolor_back_cycle            = { 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF020202, 0xFF100202, 0xFF300202, 0xFF500202, 0xFF700202};
 defcolor_text_cycle            = { 0xFFA00000, 0xFF00A000, 0xFF0030B0, 0xFFA0A000 };
 defcolor_line_numbers_back     = 0xFF101010;
 defcolor_line_numbers_text     = 0xFF404040;
 
 fleury_color_syntax_crap           = 0xff5c4d3c;
-fleury_color_operators             = 0xFFdc7575;
+fleury_color_operators             = 0xFFbd2d2d;
 fleury_color_inactive_pane_overlay = 0x44000000;
 fleury_color_inactive_pane_background = 0xff000000;
 fleury_color_file_progress_bar     = 0x60634323;
