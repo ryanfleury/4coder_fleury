@@ -696,8 +696,9 @@ F4_Boundary_CursorTokenOrBlankLine(Application_Links *app, Buffer_ID buffer,
     i64 cursor_offset = pos - active_cursor_token->pos;
     
     // NOTE(jack): If the cursor token is not an identifier, we will move to empty lines
-    i64 result = get_pos_of_blank_line_grouped(app, buffer, direction, pos);
-    result = view_get_character_legal_pos_from_pos(app, view, result);
+    i64 result = pos;
+    //get_pos_of_blank_line_grouped(app, buffer, direction, pos);
+    //result = view_get_character_legal_pos_from_pos(app, view, result);
     if (tokens.tokens != 0)
     {
         // NOTE(jack): if the the cursor token is an identifier, and we are inside of a scope
@@ -784,14 +785,14 @@ CUSTOM_COMMAND_SIG(f4_move_up_token_occurrence)
 CUSTOM_DOC("Moves the cursor to the previous occurrence of the token that the cursor is over.")
 {
     Scratch_Block scratch(app);
-    current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine_TEST));
+    current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
 }
 
 CUSTOM_COMMAND_SIG(f4_move_down_token_occurrence)
 CUSTOM_DOC("Moves the cursor to the next occurrence of the token that the cursor is over.")
 {
     Scratch_Block scratch(app);
-    current_view_scan_move(app, Scan_Forward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine_TEST));
+    current_view_scan_move(app, Scan_Forward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
 }
 
 CUSTOM_COMMAND_SIG(f4_move_right_token_boundary)
