@@ -63,7 +63,7 @@ struct F4_Index_State
     System_Mutex mutex;
     Arena arena;
     F4_Index_Note *note_table[16384];
-	F4_Index_Note* free_note;
+	F4_Index_Note *free_note;
     F4_Index_File *file_table[16384];
     F4_Index_File *free_file;
 };
@@ -76,6 +76,7 @@ struct F4_Index_ParseCtx
     String_Const_u8 string;
     Token_Array tokens;
     Token_Iterator_Array it;
+    F4_Index_Note *active_parent;
 };
 
 typedef u32 F4_Index_TokenSkipFlags;
@@ -84,37 +85,32 @@ enum
     F4_Index_TokenSkipFlag_SkipWhitespace = (1<<0),
 };
 
-internal void F4_Index_Initialize(void);
-internal void F4_Index_Lock(void);
-internal void F4_Index_Unlock(void);
-internal F4_Index_File *F4_Index_LookupFile(Application_Links *app, Buffer_ID buffer);
-internal F4_Index_File *F4_Index_LookupOrMakeFile(Application_Links *app, Buffer_ID buffer);
-internal void F4_Index_EraseFile(Application_Links *app, Buffer_ID id);
-internal void F4_Index_ClearFile(F4_Index_File *file);
-internal F4_Index_Note *F4_Index_LookupNote(String_Const_u8 string, F4_Index_Note *parent);
-internal F4_Index_Note *F4_Index_LookupNote(String_Const_u8 string);
-internal F4_Index_Note *F4_Index_MakeNote(Application_Links *app,
-                                          F4_Index_File *file,
-                                          F4_Index_Note *parent,
-                                          String_Const_u8 string,
-                                          F4_Index_NoteKind note_kind,
-                                          F4_Index_NoteFlags note_flags,
-                                          Range_i64 range);
-internal void F4_Index_ParseFile(Application_Links *app, F4_Index_File *file, String_Const_u8 string, Token_Array tokens);
-internal b32 F4_Index_ParseCtx_Inc(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags);
-#define F4_Index_ParseCtx_IncWs(ctx) F4_Index_ParseCtx_Inc(ctx, F4_Index_TokenSkipFlag_SkipWhitespace)
-internal b32 F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String_Const_u8 string, F4_Index_TokenSkipFlags flags);
-internal b32 F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out, F4_Index_TokenSkipFlags flags);
-internal b32 F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out, F4_Index_TokenSkipFlags flags);
-internal b32 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
-internal b32 F4_Index_PeekTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out);
-internal b32 F4_Index_PeekTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out);
-internal b32 F4_Index_SeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
-internal void F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token);
-internal void F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc);
-internal void F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx);
-internal String_Const_u8 F4_Index_StringFromToken(F4_Index_ParseCtx* ctx, Token* token);
-internal void F4_Index_Tick(Application_Links *app);
+function void F4_Index_Initialize(void);
+function void F4_Index_Lock(void);
+function void F4_Index_Unlock(void);
+function F4_Index_File *F4_Index_LookupFile(Application_Links *app, Buffer_ID buffer);
+function F4_Index_File *F4_Index_LookupOrMakeFile(Application_Links *app, Buffer_ID buffer);
+function void F4_Index_EraseFile(Application_Links *app, Buffer_ID id);
+function void F4_Index_ClearFile(F4_Index_File *file);
+function F4_Index_Note *F4_Index_LookupNote(String_Const_u8 string, F4_Index_Note *parent);
+function F4_Index_Note *F4_Index_LookupNote(String_Const_u8 string);
+function F4_Index_Note *F4_Index_AllocateNote(void);
+function void F4_Index_InsertNote(F4_Index_ParseCtx *ctx, F4_Index_Note *note, Range_i64 name_range, F4_Index_NoteKind note_kind, F4_Index_NoteFlags note_flags);
+function F4_Index_Note *F4_Index_MakeNote(F4_Index_ParseCtx *ctx, Range_i64 name_range, F4_Index_NoteKind note_kind, F4_Index_NoteFlags note_flags);
+function void F4_Index_ParseFile(Application_Links *app, F4_Index_File *file, String_Const_u8 string, Token_Array tokens);
+function b32 F4_Index_ParseCtx_Inc(F4_Index_ParseCtx *ctx, F4_Index_TokenSkipFlags flags);
+function b32 F4_Index_RequireToken(F4_Index_ParseCtx *ctx, String_Const_u8 string, F4_Index_TokenSkipFlags flags);
+function b32 F4_Index_RequireTokenKind(F4_Index_ParseCtx *ctx, Token_Base_Kind kind, Token **token_out, F4_Index_TokenSkipFlags flags);
+function b32 F4_Index_RequireTokenSubKind(F4_Index_ParseCtx *ctx, int sub_kind, Token **token_out, F4_Index_TokenSkipFlags flags);
+function b32 F4_Index_PeekToken(F4_Index_ParseCtx *ctx, String_Const_u8 string);
+function void F4_Index_ParseComment(F4_Index_ParseCtx *ctx, Token *token);
+function void F4_Index_SkipSoftTokens(F4_Index_ParseCtx *ctx, b32 preproc);
+function void F4_Index_SkipOpTokens(F4_Index_ParseCtx *ctx);
+function String_Const_u8 F4_Index_StringFromRange(F4_Index_ParseCtx *ctx, Range_i64 range);
+function String_Const_u8 F4_Index_StringFromToken(F4_Index_ParseCtx *ctx, Token *token);
+function F4_Index_Note *F4_Index_PushParent(F4_Index_ParseCtx *ctx, F4_Index_Note *new_parent);
+function void F4_Index_PopParent(F4_Index_ParseCtx *ctx, F4_Index_Note *last_parent);
+function void F4_Index_Tick(Application_Links *app);
 
 // Format:
 // %t -> token,         requires char * specifying token string

@@ -45,19 +45,23 @@ F4_LegoFromUserInput(User_Input in)
        event.key.code >= KeyCode_F1 && event.key.code <= KeyCode_F24)
     {
         int index = event.key.code - KeyCode_F1;
+        index = index % 4;
         lego = F4_LegoFromIndex(index);
     }
     return lego;
 }
 
 function void
-F4_Lego_BufferPlace(Application_Links *app, Buffer_ID buffer, i64 pos, F4_Lego *lego)
+F4_Lego_BufferPlace(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos, F4_Lego *lego)
 {
     switch(lego->kind)
     {
         case F4_LegoKind_String:
         {
             buffer_replace_range(app, buffer, Ii64(pos, pos), lego->string);
+            view_set_mark(app, view, seek_pos(pos));
+            view_set_cursor_and_preferred_x(app, view, seek_pos(pos + (i32)lego->string.size));
+            
             F4_PushFlash(app, buffer, Ii64(pos, pos+lego->string.size), fcolor_resolve(fcolor_id(fleury_color_lego_splat)), 0.8f);
         }break;
         default: break;
@@ -72,7 +76,7 @@ CUSTOM_DOC("Will place the lego, determined by the pressed F-key, at the cursor 
     Buffer_ID buffer = view_get_buffer(app, view, Access_Write);
     if(buffer)
     {
-        F4_Lego_BufferPlace(app, buffer, view_get_cursor_pos(app, view), lego);
+        F4_Lego_BufferPlace(app, view, buffer, view_get_cursor_pos(app, view), lego);
     }
 }
 

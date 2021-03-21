@@ -544,36 +544,44 @@ CUSTOM_DOC("Fleury startup event")
     {
         // NOTE(rjf): Open compilation buffer.
         {
-            Buffer_ID comp_buffer = create_buffer(app, string_u8_litexpr("*compilation*"),
-                                                  BufferCreate_NeverAttachToFile |
-                                                  BufferCreate_AlwaysNew);
-            buffer_set_setting(app, comp_buffer, BufferSetting_Unimportant, true);
-            buffer_set_setting(app, comp_buffer, BufferSetting_ReadOnly, true);
+            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*compilation*"),
+                                             BufferCreate_NeverAttachToFile |
+                                             BufferCreate_AlwaysNew);
+            buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+            buffer_set_setting(app, buffer, BufferSetting_ReadOnly, true);
         }
         
         // NOTE(rjf): Open lego buffer.
         {
-            Buffer_ID comp_buffer = create_buffer(app, string_u8_litexpr("*lego*"),
-                                                  BufferCreate_NeverAttachToFile |
-                                                  BufferCreate_AlwaysNew);
-            buffer_set_setting(app, comp_buffer, BufferSetting_Unimportant, true);
-            buffer_set_setting(app, comp_buffer, BufferSetting_ReadOnly, true);
+            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*lego*"),
+                                             BufferCreate_NeverAttachToFile |
+                                             BufferCreate_AlwaysNew);
+            buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+            buffer_set_setting(app, buffer, BufferSetting_ReadOnly, true);
         }
         
         // NOTE(rjf): Open calc buffer.
         {
-            Buffer_ID calc_buffer = create_buffer(app, string_u8_litexpr("*calc*"),
-                                                  BufferCreate_NeverAttachToFile |
-                                                  BufferCreate_AlwaysNew);
-            buffer_set_setting(app, calc_buffer, BufferSetting_Unimportant, true);
+            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*calc*"),
+                                             BufferCreate_NeverAttachToFile |
+                                             BufferCreate_AlwaysNew);
+            buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
         }
         
         // NOTE(rjf): Open peek buffer.
         {
-            Buffer_ID peek_buffer = create_buffer(app, string_u8_litexpr("*peek*"),
-                                                  BufferCreate_NeverAttachToFile |
-                                                  BufferCreate_AlwaysNew);
-            buffer_set_setting(app, peek_buffer, BufferSetting_Unimportant, true);
+            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*peek*"),
+                                             BufferCreate_NeverAttachToFile |
+                                             BufferCreate_AlwaysNew);
+            buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
+        }
+        
+        // NOTE(rjf): Open LOC buffer.
+        {
+            Buffer_ID buffer = create_buffer(app, string_u8_litexpr("*loc*"),
+                                             BufferCreate_NeverAttachToFile |
+                                             BufferCreate_AlwaysNew);
+            buffer_set_setting(app, buffer, BufferSetting_Unimportant, true);
         }
     }
     

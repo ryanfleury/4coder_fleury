@@ -1553,6 +1553,183 @@ CUSTOM_DOC("Performs VS-style uncommenting on the selected range.")
     no_mark_snap_to_cursor(app, view);
 }
 
+struct F4_LOCInfo
+{
+    F4_LOCInfo *next;
+    String_Const_u8 name;
+    i64 lines;
+    i64 whitespace_only_lines;
+    i64 open_brace_only_lines;
+};
+
+function F4_LOCInfo *
+F4_LOCInfoFromBuffer(Application_Links *app, Arena *arena, Buffer_ID buffer)
+{
+    F4_LOCInfo *first = 0;
+    F4_LOCInfo *last = 0;
+    
+    F4_LOCInfo *file_info = push_array_zero(arena, F4_LOCInfo, 1);
+    sll_queue_push(first, last, file_info);
+    file_info->name = str8_lit("all");
+    F4_LOCInfo *active_info = 0;
+    
+    i64 line_count = buffer_get_line_count(app, buffer);
+    for(i64 line_idx = 0; line_idx < line_count; line_idx += 1)
+    {
+        Scratch_Block scratch(app, arena);
+        String_Const_u8 line = push_buffer_line(app, scratch, buffer, line_idx);
+        if(line.size != 0 && line.str[line.size-1] == '\r')
+        {
+            line.size -= 1;
+        }
+        
+        //- rjf: begin a section if we find a root divider comment here
+        if(line.size >= 3 && line.str[0] == '/' && line.str[1] == '/' && line.str[2] == '~')
+        {
+            active_info = push_array_zero(arena, F4_LOCInfo, 1);
+            active_info->name = push_string_copy(arena, string_substring(line, Ii64(3, line.size)));
+            sll_queue_push(first, last, active_info);
+        }
+        
+        //- rjf: find out if this is a line with only whitespace
+        b32 is_only_whitespace = true;
+        {
+            for(u64 i = 0; i < line.size; i += 1)
+            {
+                if(!character_is_whitespace(line.str[i]))
+                {
+                    is_only_whitespace = false;
+                    break;
+                }
+            }
+        }
+        
+        //- rjf: find out if this is a line with only whitespace and an open brace
+        b32 is_only_open_brace = false;
+        if(is_only_whitespace == false)
+        {
+            for(u64 i = 0; i < line.size; i += 1)
+            {
+                if(!character_is_whitespace(line.str[i]))
+                {
+                    is_only_open_brace = line.str[i] == '{';
+                    if(!is_only_open_brace)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        //- rjf: increment line counts
+        {
+            file_info->lines += 1;
+            if(active_info != 0)
+            {
+                active_info->lines += 1;
+            }
+            if(is_only_whitespace)
+            {
+                file_info->whitespace_only_lines += 1;
+                if(active_info != 0)
+                {
+                    active_info->whitespace_only_lines += 1;
+                }
+            }
+            if(is_only_open_brace)
+            {
+                file_info->open_brace_only_lines += 1;
+                if(active_info != 0)
+                {
+                    active_info->open_brace_only_lines += 1;
+                }
+            }
+        }
+    }
+    
+    return first;
+}
+
+function int
+F4_LOCInfoCompare(const void *a_void_fuck_cplusplus, const void *b_void_fuck_cplusplus)
+{
+    F4_LOCInfo *a = (F4_LOCInfo *)a_void_fuck_cplusplus;
+    F4_LOCInfo *b = (F4_LOCInfo *)b_void_fuck_cplusplus;
+    return ((a->lines < b->lines) ? +1 :
+            (a->lines > b->lines) ? -1 :
+            0);
+}
+
+CUSTOM_COMMAND_SIG(f4_loc)
+CUSTOM_DOC("Counts the lines of code in the current buffer, breaks it down by section, and outputs to the *loc* buffer.")
+{
+    Scratch_Block scratch(app);
+    View_ID view = get_active_view(app, Access_Read);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Read);
+    
+    //- rjf: get all sections and counts from buffer
+    F4_LOCInfo *infos_list = F4_LOCInfoFromBuffer(app, scratch, buffer);
+    
+    //- rjf: build unsorted info in array form
+    int info_count = 0;
+    F4_LOCInfo *info_array = 0;
+    {
+        for(F4_LOCInfo *info = infos_list; info; info = info->next, info_count += 1);
+        info_array = push_array_zero(scratch, F4_LOCInfo, info_count);
+        int i = 0;
+        for(F4_LOCInfo *info = infos_list; info; info = info->next, i += 1)
+        {
+            info_array[i] = *info;
+        }
+    }
+    
+    //- rjf: sort array
+    {
+        qsort(info_array, info_count, sizeof(F4_LOCInfo), F4_LOCInfoCompare);
+    }
+    
+    //- rjf: print loc info
+    Buffer_ID loc_buffer = get_buffer_by_name(app, str8_lit("*loc*"), AccessFlag_Write);
+    if(loc_buffer != 0)
+    {
+        clear_buffer(app, loc_buffer);
+        
+        for(int i = 0; i < info_count; i += 1)
+        {
+            F4_LOCInfo *info = info_array + i;
+            
+            Scratch_Block scratch2(app, scratch);
+            int padding = 25;
+            int chrs = (int)info->name.size;
+            int spaces = 0;
+            if(chrs > padding)
+            {
+                chrs = padding;
+                spaces = 0;
+            }
+            else
+            {
+                spaces = padding - chrs;
+            }
+            
+            if(spaces < 0)
+            {
+                spaces = 0;
+            }
+            
+            String_Const_u8 string = push_stringf(scratch2,
+                                                  ">>> %.*s%.*s: %6i lines; %6i whitespace; %6i open braces; %6i significant\n",
+                                                  chrs, info->name.str,
+                                                  spaces, "                                            ",
+                                                  (int)info->lines,
+                                                  (int)info->whitespace_only_lines,
+                                                  (int)info->open_brace_only_lines,
+                                                  (int)(info->lines - (info->whitespace_only_lines+info->open_brace_only_lines)));
+            b32 write_successful = buffer_replace_range(app, loc_buffer, Ii64(buffer_get_size(app, loc_buffer)), string);
+            write_successful = write_successful;
+        }
+    }
+}
 
 //~ NOTE(rjf): Deprecated names:
 CUSTOM_COMMAND_SIG(fleury_write_text_input)
