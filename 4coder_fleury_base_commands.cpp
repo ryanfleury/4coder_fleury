@@ -675,10 +675,9 @@ F4_Boundary_TokenAndWhitespace(Application_Links *app, Buffer_ID buffer,
     return(result);
 }
 
-// TODO(rjf): Replace with the final one from Jack's layer.
 function i64
-F4_Boundary_CursorTokenOrBlankLine_TEST(Application_Links *app, Buffer_ID buffer, 
-                                        Side side, Scan_Direction direction, i64 pos)
+F4_Boundary_CursorTokenOrBlankLine(Application_Links *app, Buffer_ID buffer, 
+                                   Side side, Scan_Direction direction, i64 pos)
 {
     Scratch_Block scratch(app);
     
@@ -807,6 +806,20 @@ CUSTOM_DOC("Seek left for boundary between alphanumeric characters and non-alpha
 {
     Scratch_Block scratch(app);
     current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_TokenAndWhitespace));
+}
+
+CUSTOM_COMMAND_SIG(f4_move_up_token_occurance)
+CUSTOM_DOC("Moves the cusror to the previoud")
+{
+    Scratch_Block scratch(app);
+    current_view_scan_move(app, Scan_Backward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
+}
+
+CUSTOM_COMMAND_SIG(f4_move_down_token_occurance)
+CUSTOM_DOC("Moves the cursor one charcter to the right.")
+{
+    Scratch_Block scratch(app);
+    current_view_scan_move(app, Scan_Forward, push_boundary_list(scratch, F4_Boundary_CursorTokenOrBlankLine));
 }
 
 CUSTOM_COMMAND_SIG(f4_backspace_token_boundary)
