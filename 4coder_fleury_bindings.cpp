@@ -66,7 +66,53 @@ F4_ImplicitMap(Application_Links *app, String_ID lang, String_ID mode, Input_Eve
     return(result);
 }
 
+CUSTOM_COMMAND_SIG(f4_increase_face_size)
+CUSTOM_DOC("Increase the size of the face used by the current buffer.")
+{
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    
+    Face_ID face_id = get_face_id(app, buffer);
+    Face_Description description = get_face_description(app, face_id);
+    ++description.parameters.pt_size;
+    try_modify_face(app, face_id, &description);
+    
+    Face_Description small_font_description = get_face_description(app, global_small_code_face);
+    ++small_font_description.parameters.pt_size;
+    try_modify_face(app, global_small_code_face, &small_font_description);
+}
 
+CUSTOM_COMMAND_SIG(f4_decrease_face_size)
+CUSTOM_DOC("Decrease the size of the face used by the current buffer.")
+{
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Face_ID face_id = get_face_id(app, buffer);
+    Face_Description description = get_face_description(app, face_id);
+    --description.parameters.pt_size;
+    try_modify_face(app, face_id, &description);
+    
+    Face_Description small_font_description = get_face_description(app, global_small_code_face);
+    --small_font_description.parameters.pt_size;
+    try_modify_face(app, global_small_code_face, &small_font_description);
+}
+
+CUSTOM_COMMAND_SIG(f4_mouse_wheel_change_face_size)
+CUSTOM_DOC("Reads the state of the mouse wheel and uses it to either increase or decrease the face size. (also adjusts brace annotation face)")
+{
+    local_persist u64 next_resize_time = 0;
+    u64 now = system_now_time();
+    if (now >= next_resize_time){
+        next_resize_time = now + 50*1000;
+        Mouse_State mouse = get_mouse_state(app);
+        if (mouse.wheel > 0){
+            f4_decrease_face_size(app);
+        }
+        else if (mouse.wheel < 0){
+            f4_increase_face_size(app);
+        }
+    }
+}
 //~ NOTE(rjf): Bindings
 
 function void
@@ -90,7 +136,7 @@ F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
     BindCore(default_try_exit, CoreCode_TryExit);
     Bind(exit_4coder,          KeyCode_F4, KeyCode_Alt);
     BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
+    BindMouseWheel(f4_mouse_wheel_change_face_size, KeyCode_Control);
     
     SelectMap(file_map_id);
     ParentMap(global_map_id);
