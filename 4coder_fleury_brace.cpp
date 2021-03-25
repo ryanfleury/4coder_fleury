@@ -96,7 +96,17 @@ F4_Brace_RenderCloseBraceAnnotation(Application_Links *app, Buffer_ID buffer, Te
             i64 last_char = get_line_end_pos(app, buffer, line)-1;
             
             Rect_f32 close_scope_rect = text_layout_character_on_screen(app, text_layout_id, last_char);
-            Vec2_f32 close_scope_pos = { close_scope_rect.x0 + 12, close_scope_rect.y0 };
+            
+            // NOTE(jack): Use the face metrics line_heights to vertically align  the annotation
+            Face_ID buffer_face = get_face_id(app, buffer);
+            Face_Metrics buffer_face_metrics = get_face_metrics(app, buffer_face);
+            Face_Metrics annotation_face_metrics = get_face_metrics(app, face_id);
+            f32 center_offset = (buffer_face_metrics.line_height - annotation_face_metrics.line_height) / 2.0f;
+            
+            Vec2_f32 close_scope_pos = {
+                close_scope_rect.x0 + buffer_face_metrics.normal_advance,
+                close_scope_rect.y0 + center_offset
+            };
             
             // NOTE(rjf): Find token set before this scope begins.
             Token *start_token = 0;
