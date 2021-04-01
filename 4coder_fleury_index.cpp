@@ -604,21 +604,21 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
                 
                 case 'k':
                 {
-                    Token_Base_Kind kind = va_arg(args, Token_Base_Kind);
+                    Token_Base_Kind kind = (Token_Base_Kind)va_arg(args, int);
                     Token **output_token = va_arg(args, Token **);
                     parsed = parsed && F4_Index_RequireTokenKind(ctx, kind, output_token, flags);
                 }break;
                 
                 case 'b':
                 {
-                    i16 kind = va_arg(args, i16);
+                    i16 kind = (i16)va_arg(args, int);
                     Token **output_token = va_arg(args, Token **);
                     parsed = parsed && F4_Index_RequireTokenSubKind(ctx, kind, output_token, flags);
                 }break;
                 
                 case 'n':
                 {
-                    F4_Index_NoteKind kind = va_arg(args, F4_Index_NoteKind);
+                    F4_Index_NoteKind kind = (F4_Index_NoteKind)va_arg(args, int);
                     F4_Index_Note **output_note = va_arg(args, F4_Index_Note **);
                     Token *token = 0;
                     parsed = parsed && F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &token, flags);
